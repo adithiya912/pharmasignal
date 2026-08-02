@@ -35,7 +35,10 @@ any prompt: "build the next unchecked item under X".
     symptom words on casual patient phrasing, e.g. "diarrhea" is only
     partially recognized as "dia". Not patched — needs fine-tuning or
     a symptom-lexicon fallback in a later pass.
-- [ ] Classification: genuine adverse drug event? yes/no
+- [x] Classification: genuine adverse drug event? yes/no
+  - Rule-based v0 (drug+symptom entity presence, with a negation-phrase
+    override for "felt fine" / "no side effects" type reports), not a
+    trained model — revisit if precision on real reports is too low.
 - [ ] Clustering: group similar reports into emerging-signal clusters
 - [ ] Drug knowledge graph in Neo4j (drug-drug relationships)
 - [ ] GNN: predict previously-unknown drug interactions

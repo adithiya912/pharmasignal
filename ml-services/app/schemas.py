@@ -15,3 +15,14 @@ class ExtractResponse(BaseModel):
     dosages: list[str]
     duration: str
     severity: Severity
+
+
+class ClassifyRequest(BaseModel):
+    report_text: str
+    extracted: ExtractResponse
+
+
+class ClassifyResponse(BaseModel):
+    is_adverse_event: bool
+    confidence: float
+    trigger: list[str]

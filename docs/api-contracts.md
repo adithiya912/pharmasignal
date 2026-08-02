@@ -28,7 +28,8 @@ Output:
 ```json
 {
   "is_adverse_event": true,
-  "confidence": 0.0
+  "confidence": 0.0,
+  "trigger": ["string — entity or phrase that drove the decision, e.g. 'drug: ibuprofen', 'symptom: blood', 'negation: felt fine'"]
 }
 ```
 
