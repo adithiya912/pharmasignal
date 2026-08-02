@@ -26,3 +26,23 @@ class ClassifyResponse(BaseModel):
     is_adverse_event: bool
     confidence: float
     trigger: list[str]
+
+
+class ReportEmbedding(BaseModel):
+    id: str
+    embedding: list[float]
+
+
+class ClusterRequest(BaseModel):
+    reports: list[ReportEmbedding]
+
+
+class ClusterInfo(BaseModel):
+    cluster_id: str
+    report_ids: list[str]
+    label: str
+    size: int
+
+
+class ClusterResponse(BaseModel):
+    clusters: list[ClusterInfo]
