@@ -30,7 +30,11 @@ any prompt: "build the next unchecked item under X".
 
 ## ML Pipeline (backend, no UI)
 - [ ] BioBERT text embedding on patient report
-- [ ] NER extraction: drug, dose, duration, side effect, severity
+- [x] NER extraction: drug, dose, duration, side effect, severity
+  - Known gap: base model (d4data/biomedical-ner-all) under-tags some
+    symptom words on casual patient phrasing, e.g. "diarrhea" is only
+    partially recognized as "dia". Not patched — needs fine-tuning or
+    a symptom-lexicon fallback in a later pass.
 - [ ] Classification: genuine adverse drug event? yes/no
 - [ ] Clustering: group similar reports into emerging-signal clusters
 - [ ] Drug knowledge graph in Neo4j (drug-drug relationships)

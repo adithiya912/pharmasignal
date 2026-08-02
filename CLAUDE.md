@@ -38,6 +38,6 @@ standard admin-dashboard grid layout, follow the brief exactly.
 [Update this each week] Phase 0: ML prototyping, not yet building app
 
 ## Commands
-- `cd ml-services && uvicorn main:app --reload`
+- `cd ml-services && uvicorn app.main:app --reload`
 - `cd web && npm run dev`
 - Tests: [fill in once you have them]
