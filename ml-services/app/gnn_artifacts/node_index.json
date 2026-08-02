@@ -1,0 +1,24 @@
+{
+  "nodes": [
+    "amoxicillin",
+    "aspirin",
+    "ciprofloxacin",
+    "fluconazole",
+    "ibuprofen",
+    "metformin",
+    "omeprazole",
+    "sulfamethoxazole-trimethoprim",
+    "warfarin"
+  ],
+  "node_index": {
+    "amoxicillin": 0,
+    "aspirin": 1,
+    "ciprofloxacin": 2,
+    "fluconazole": 3,
+    "ibuprofen": 4,
+    "metformin": 5,
+    "omeprazole": 6,
+    "sulfamethoxazole-trimethoprim": 7,
+    "warfarin": 8
+  }
+}

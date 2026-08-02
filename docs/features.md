@@ -70,29 +70,49 @@ any prompt: "build the next unchecked item under X".
     added — none invented. Each relationship carries mechanism,
     evidence (major/moderate/weak), and source properties for
     traceability.
-- [ ] GNN: predict previously-unknown drug interactions
-  - NOT built yet — /predict-interaction v0 (below) is a direct graph
-    traversal, not a trained model, so this item stays unchecked.
-    - v0 /predict-interaction: MATCH shortestPath over
-      INTERACTS_WITH, 1-2 hops, using app/predict_interaction.py.
-      Working and tested (direct hit, indirect 2-hop, no-path all
-      confirmed sane).
-    - Semantic deviation from what a GNN would return (flagged per
-      request, not silently redefined): a direct edge (1 hop) is a
-      *documented* interaction — confidence is derived from the
-      edge's evidence label (major=0.9/moderate=0.6/weak=0.3), i.e.
-      "how well-established is this known interaction," not a
-      model's calibrated probability. A 2-hop path (shared
-      intermediate drug, no direct edge) is NOT a documented
-      interaction between the two queried drugs — it's a much
-      weaker structural hint, decayed to 0.5 × min(edge confidences).
-      No path within 2 hops returns interaction_predicted=false with
-      LOW confidence (0.1), not high confidence — absence of an edge
-      in a 9-drug seed graph means "no data," not "proven safe." A
-      trained GNN could generalize to previously-unseen pairs from
-      learned structure; this graph query cannot — it only reports
-      what's already encoded, so it does not actually satisfy
-      "predict previously-unknown drug interactions."
+- [x] GNN: predict previously-unknown drug interactions
+  - A real GNN is now trained and wired into /predict-interaction
+    (app/gnn_model.py, app/gnn_predictor.py, scripts/train_gnn.py),
+    replacing the v0 graph-traversal logic for interaction_predicted
+    and confidence. Neo4j graph traversal (shortestPath, 1-2 hops) is
+    now used ONLY for graph_path — the /predict-interaction contract
+    shape is unchanged.
+  - **Checking this box means "a working GNN training/inference
+    pipeline exists," NOT "this reliably predicts real drug
+    interactions."** Read the rest of this note before trusting any
+    number it outputs.
+  - Architecture: 2-layer GCN (PyTorch Geometric `GCNConv`) over a
+    learned node-embedding table (no molecular/chemical features are
+    available at this stage — the model only has graph structure and
+    the INTERACTS_WITH evidence weight to learn from), decoded via
+    dot-product link prediction.
+  - Training data: the same 9-node / 9-edge seed graph from
+    scripts/seed_graph.py. This is a proof-of-concept scale, full
+    stop. 9 edges cannot teach a model real pharmacology.
+  - Honest evaluation (see scripts/train_gnn.py output): held out 2
+    true interactions + 4 true non-interactions, trained on the
+    remaining 7 edges with early stopping on validation loss (best
+    epoch found: 9, out of 300 — the model starts overfitting almost
+    immediately past that). Held-out accuracy: **2/6, at or below
+    chance.** With n=6 this is not statistically meaningful either
+    way, but it directly demonstrates the model has NOT learned to
+    discriminate real interactions from non-interactions at this
+    data scale — it is not quietly working; it is visibly not working,
+    and that's the honest result to report at 9 nodes.
+  - What it would take to be genuinely useful: a labeled dataset with
+    hundreds-to-thousands of drugs and known interactions (e.g. the
+    full DrugBank interaction set, not our 9-pair sample), real
+    molecular/chemical descriptors as node features instead of a
+    learned embedding table, a train/val/test split with actual
+    statistical power, and proper calibration. None of that exists
+    yet — this is the scaffolding for that future work, not a
+    substitute for it.
+  - Operational caveat: the GNN's embeddings are a frozen snapshot
+    from the last scripts/train_gnn.py run. Adding drugs to Neo4j via
+    scripts/seed_graph.py does NOT update predictions for those drugs
+    until the model is retrained — predict_interaction.py returns
+    interaction_predicted=false, confidence=0.0 for any drug the GNN
+    hasn't seen, even if Neo4j now has it.
 - [x] RAG: retrieve evidence from PubMed / DrugBank / FDA labels
   - v0 is a small local corpus (17 entries covering ibuprofen,
     metformin, warfarin, amoxicillin), not live PubMed/DrugBank/FDA

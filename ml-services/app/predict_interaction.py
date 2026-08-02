@@ -1,29 +1,24 @@
+from app.gnn_predictor import predict_link_probability
 from app.graph_db import get_driver
 
-# v0: direct graph traversal, not a trained GNN. See docs/features.md for
-# why this changes what "confidence" and "graph_path" mean versus what a
-# GNN would return — summarized here:
+# v1: interaction_predicted/confidence now come from a trained GNN
+# (see scripts/train_gnn.py); Neo4j graph traversal is used ONLY for
+# graph_path (the explanation field), not for the core prediction —
+# per the requested internals swap.
 #
-# - A direct edge (1 hop) is a *documented* interaction from the seed
-#   corpus. Its confidence is derived from the edge's evidence strength
-#   (major/moderate/weak), i.e. "how well-established is this known
-#   interaction" — not a model's calibrated probability.
-# - A 2-hop path (one intermediate drug, no direct edge) is NOT a
-#   documented interaction between drug_a and drug_b — it's a structural
-#   hint ("both interact with the same third drug"), which is a much
-#   weaker signal. Confidence is decayed accordingly and should not be
-#   read as evidence the two drugs actually interact.
-# - No path within 2 hops returns interaction_predicted=False with LOW
-#   confidence, not high confidence — absence of an edge in a 9-drug seed
-#   graph means "no data," not "proven safe." A trained GNN could
-#   generalize to previously-unseen pairs from learned structure; this
-#   graph query cannot — it can only report what's already encoded.
-_EVIDENCE_WEIGHT = {"major": 0.9, "moderate": 0.6, "weak": 0.3}
-_INDIRECT_DECAY = 0.5
-_NO_PATH_CONFIDENCE = 0.1
+# HONEST RELIABILITY NOTE (full writeup in docs/features.md): this GNN
+# was trained on 9 nodes / 9 edges — a proof-of-concept scale, not one
+# that generalizes meaningfully. A held-out evaluation during training
+# (2 held-out true interactions + 4 held-out non-interactions) scored
+# 2/6, at or below chance, and that evaluation is itself too small to
+# be statistically meaningful — it demonstrates the training
+# methodology has no leakage, not that the model works. Treat
+# `confidence` here as "what a barely-trained model on 9 data points
+# outputs," not a validated probability of real interaction.
+_LINK_THRESHOLD = 0.5
 
 
-def predict_interaction(drug_a: str, drug_b: str) -> tuple[bool, float, list[str]]:
+def _graph_path(drug_a: str, drug_b: str) -> list[str]:
     driver = get_driver()
     with driver.session() as session:
         record = session.run(
@@ -31,20 +26,20 @@ def predict_interaction(drug_a: str, drug_b: str) -> tuple[bool, float, list[str
             MATCH p = shortestPath(
                 (a:Drug {name: $drug_a})-[:INTERACTS_WITH*1..2]-(b:Drug {name: $drug_b})
             )
-            RETURN [n IN nodes(p) | n.name] AS path,
-                   [r IN relationships(p) | r.evidence] AS evidences,
-                   length(p) AS hops
+            RETURN [n IN nodes(p) | n.name] AS path
             """,
             drug_a=drug_a,
             drug_b=drug_b,
         ).single()
+    return record["path"] if record else []
 
-    if record is None:
-        return False, _NO_PATH_CONFIDENCE, []
 
-    path: list[str] = record["path"]
-    weights = [_EVIDENCE_WEIGHT.get(e, 0.0) for e in record["evidences"]]
-    hops: int = record["hops"]
+def predict_interaction(drug_a: str, drug_b: str) -> tuple[bool, float, list[str]]:
+    path = _graph_path(drug_a, drug_b)
+    probability = predict_link_probability(drug_a, drug_b)
 
-    confidence = weights[0] if hops == 1 else _INDIRECT_DECAY * min(weights)
-    return True, round(confidence, 2), path
+    if probability is None:
+        # Neither the GNN nor the graph has ever seen one of these drugs.
+        return False, 0.0, path
+
+    return probability >= _LINK_THRESHOLD, round(probability, 3), path

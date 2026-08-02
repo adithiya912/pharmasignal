@@ -1,8 +1,10 @@
-"""Runs /predict-interaction against 2 pairs: a direct, well-documented
-interaction (warfarin + amoxicillin) and a pair with no known
-interaction in the seed graph (metformin + amoxicillin — both nodes
-exist but aren't connected within 2 hops), to confirm both return
-sensible results.
+"""Runs /predict-interaction (now GNN-backed) against 4 pairs:
+- warfarin + amoxicillin: known direct interaction (major evidence)
+- metformin + amoxicillin: no known interaction, 3 hops apart in the graph
+- metformin + warfarin: no known interaction, 2 hops apart (via ciprofloxacin)
+- aspirin + fluconazole: genuinely unseen pair, not directly connected,
+  2 hops apart via the warfarin hub — the actual "unseen interaction"
+  case a GNN is supposed to handle differently from pure graph traversal
 
 Run from ml-services/: python -m scripts.test_predict_interaction
 """
@@ -19,6 +21,8 @@ from app.predict_interaction import predict_interaction
 PAIRS = [
     ("warfarin", "amoxicillin"),
     ("metformin", "amoxicillin"),
+    ("metformin", "warfarin"),
+    ("aspirin", "fluconazole"),
 ]
 
 
