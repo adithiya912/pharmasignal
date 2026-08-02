@@ -22,28 +22,52 @@ export function SignalLine({ children }: { children: ReactNode }) {
 type MarkerTone = "sage" | "amber" | "coral" | "muted";
 
 const markerToneClass: Record<MarkerTone, string> = {
-  sage: "bg-signal-sage shadow-[0_0_0_4px_rgba(122,155,118,0.18)]",
-  amber: "bg-signal-amber shadow-[0_0_0_4px_rgba(232,163,61,0.2)]",
-  coral: "bg-signal-coral shadow-[0_0_0_4px_rgba(212,106,106,0.22)]",
-  muted: "bg-muted-foreground/50",
+  sage: "size-2.5 bg-signal-sage shadow-[0_0_0_4px_rgba(122,155,118,0.18)]",
+  amber: "size-3.5 bg-signal-amber shadow-[0_0_0_5px_rgba(232,163,61,0.25)]",
+  coral: "size-4 bg-signal-coral shadow-[0_0_0_5px_rgba(212,106,106,0.28)]",
+  muted: "size-2.5 bg-muted-foreground/50",
+};
+
+const pulseRingClass: Record<MarkerTone, string> = {
+  sage: "",
+  amber: "bg-signal-amber/70",
+  coral: "bg-signal-coral/70",
+  muted: "",
 };
 
 interface SignalNodeProps {
   tone?: MarkerTone;
   indent?: 0 | 1 | 2;
+  /** Plays a single pulse-then-settle animation on the marker — the
+   * "line reacts to an anomaly" moment from design-brief.md. Only
+   * meaningful for amber/coral; pass true once, when the risk result
+   * first lands, not on every re-render. */
+  spike?: boolean;
   children: ReactNode;
   className?: string;
 }
 
 /** One entry on the line: a marker dot plus a panel that branches off it. */
-export function SignalNode({ tone = "sage", indent = 0, children, className = "" }: SignalNodeProps) {
+export function SignalNode({
+  tone = "sage",
+  indent = 0,
+  spike = false,
+  children,
+  className = "",
+}: SignalNodeProps) {
   const indentClass = indent === 2 ? "sm:ml-10" : indent === 1 ? "sm:ml-4" : "";
+  const canSpike = spike && (tone === "amber" || tone === "coral");
   return (
     <div className="relative">
-      <span
-        aria-hidden
-        className={`absolute -left-8.5 top-2 size-2.5 rounded-full sm:-left-10.5 ${markerToneClass[tone]}`}
-      />
+      <span className="absolute -left-9 top-1.5 flex size-4 items-center justify-center sm:-left-11">
+        {canSpike && (
+          <span
+            aria-hidden
+            className={`absolute inset-0 animate-signal-pulse rounded-full ${pulseRingClass[tone]}`}
+          />
+        )}
+        <span aria-hidden className={`relative rounded-full ${markerToneClass[tone]}`} />
+      </span>
       <div className={`max-w-2xl ${indentClass} ${className}`}>{children}</div>
     </div>
   );

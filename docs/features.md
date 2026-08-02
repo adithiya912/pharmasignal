@@ -14,23 +14,57 @@ any prompt: "build the next unchecked item under X".
     email-code challenge) — not just "the code compiles."
   - Single role only (patient) — no doctor/admin roles, org support,
     or role-based routing yet.
-- [ ] Report side effects (free-text form)
-  - Working end-to-end for the /extract path: patient submits
-    free-text -> web app's /api/extract route proxies server-side to
-    ml-services (avoids needing CORS changes in ml-services) ->
-    extracted drugs/symptoms/dosages/duration/severity render as a
-    node on the signal line. Verified live via Playwright against the
-    real dev server + real ml-services process (not mocked) — see
-    screenshot description in conversation.
-  - Left unchecked because scope explicitly excluded for this
-    session: no Supabase persistence (reports live in React state,
-    gone on refresh), no /classify or /risk-score wiring (so nothing
-    is actually triaged yet, only extracted), no doctor-side
+- [x] Report side effects (free-text form)
+  - Full pipeline now wired end-to-end, all 5 calls server-side via
+    /api/* route handlers proxying to ml-services (same pattern as
+    /api/extract): /extract -> /classify -> /predict-interaction
+    (skipped gracefully with a { interaction_predicted: false,
+    confidence: 0, graph_path: [] } default when fewer than 2 drugs
+    are extracted; every unique pair checked and the
+    highest-confidence pair used when 3+) -> /retrieve-evidence
+    (query built from extracted drugs + symptoms) -> /risk-score
+    (fuses all three). Verified live via Playwright against the real
+    dev server + real ml-services process for 3 reports (direct
+    interaction, single-drug/no-interaction, negative control) plus a
+    4th ad hoc single-drug case — all produced correct, non-mocked
+    risk_level/explanation/contributing_reports/contributing_sources.
+  - Still left out, per this session's scope: no Supabase persistence
+    (reports live in React state, gone on refresh), no doctor-side
     visibility.
 - [ ] View history of own past reports
+  - Still session-only (React state) — needs Supabase persistence to
+    survive a refresh or count as real history.
 - [ ] Check drug interactions between 2+ medicines
+  - /predict-interaction is now wired into the report pipeline
+    (checked automatically per submitted report), but there's no
+    standalone "check any two drugs" patient-facing tool yet — that's
+    a distinct UI this item still refers to.
 - [ ] Ask medicine-related questions (RAG-backed Q&A)
-- [ ] Receive AI-generated risk summary per report
+- [x] Receive AI-generated risk summary per report
+  - risk_level (low/medium/high) + plain-language explanation now
+    render as the primary result per report, color-coded per
+    design-brief.md (sage/amber/coral) with the signal-line marker
+    thickening + a one-time pulse animation for medium/high — the
+    brief's "line reacts to an anomaly" moment. Raw NER output
+    (drugs/symptoms/dosages/duration/severity) demoted to a collapsed
+    "Extracted details" disclosure, no longer the headline.
+  - Known gap surfaced by this session's end-to-end testing (not
+    something to silently paper over): /predict-interaction's GNN
+    (added in an earlier ml-services session) doesn't preserve the
+    evidence-label confidence scale (major=0.9/moderate=0.6/weak=0.3)
+    that /risk-score's Medium/High threshold (strict >0.6) was
+    calibrated against in an even earlier session — the GNN was
+    trained with a binary "edge exists" target, so any known direct
+    interaction tends to score close to 1.0 regardless of its
+    original evidence label. Concretely: metformin+ciprofloxacin
+    (seeded as "moderate" evidence) now scores confidence 0.87 from
+    the GNN and lands **High**, not the **Medium** the threshold was
+    designed to produce for moderate-evidence interactions. This is a
+    real cross-session consequence, not a bug introduced here — flagged
+    for a future ml-services session to either recalibrate
+    /risk-score's thresholds against the GNN's actual output
+    distribution, or have /predict-interaction expose something
+    closer to the original evidence tier alongside its probability.
 - [ ] Upload supporting documents (optional)
 
 ## Doctor

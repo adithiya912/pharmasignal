@@ -3,9 +3,9 @@ import { proxyToMlService } from "@/lib/ml-proxy";
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
-  if (!body || typeof body.report_text !== "string") {
-    return NextResponse.json({ error: "report_text is required" }, { status: 400 });
+  if (!body || typeof body.query !== "string") {
+    return NextResponse.json({ error: "query is required" }, { status: 400 });
   }
 
-  return proxyToMlService("/extract", { report_text: body.report_text });
+  return proxyToMlService("/retrieve-evidence", { query: body.query });
 }
