@@ -1,13 +1,20 @@
 from app.schemas import ClassifyResponse, EvidenceResponse, PredictInteractionResponse, RiskLevel
 
-# High is a STRICT > on confidence: /predict-interaction's own evidence
-# weighting (major=0.9, moderate=0.6, weak=0.3) put a direct "moderate"
-# edge exactly on 0.6, so a >= comparison would put moderate-evidence
-# interactions in High alongside major ones. Confirmed with the user that
-# moderate should land Medium instead — hence strict > here, and the
-# Medium band below is inclusive of 0.6 to match (no gap between them).
-_HIGH_CONFIDENCE_THRESHOLD = 0.6
-_MEDIUM_CONFIDENCE_LOW = 0.3
+# Recalibration note: thresholds on /predict-interaction's GNN
+# `confidence` were tried first and abandoned. Querying all 9 seeded
+# edges directly showed the GNN does not preserve evidence tiers:
+#   major:    0.997, 0.999, 0.999, 0.671, 0.666, 1.0
+#   moderate: 0.282 (warfarin-ciprofloxacin), 0.869 (metformin-ciprofloxacin)
+#   weak:     0.598 (warfarin-omeprazole)
+# moderate (0.869) exceeds two major edges (0.666, 0.671), and weak
+# (0.598) sits inside the major range too — no confidence threshold
+# can recover the tiers. So `evidence` (the seeded edge's documented
+# tier, looked up directly from Neo4j — see /predict-interaction) is
+# now the primary signal for direct edges. GNN `confidence` is used
+# only as a boolean gate (via interaction_predicted) for pairs with NO
+# direct edge, where it's the sole available signal — and it's capped
+# at Medium there, never High, since it's an inferred structural hint,
+# not a documented interaction.
 _EVIDENCE_RELEVANCE_THRESHOLD = 0.5
 
 
@@ -25,6 +32,11 @@ def compute_risk_score(
     trigger_text = "; ".join(contributing_reports) or "no supporting signal"
     top_relevance = max((s.relevance for s in evidence.sources), default=0.0)
     path_text = " -> ".join(interaction.graph_path) if interaction.graph_path else "no graph path"
+    sources_note = (
+        f" Supported by {len(evidence.sources)} retrieved source(s), including '{evidence.sources[0].title}'."
+        if evidence.sources
+        else ""
+    )
 
     if not classification.is_adverse_event:
         explanation = (
@@ -33,25 +45,30 @@ def compute_risk_score(
         )
         return "low", explanation, contributing_reports, contributing_sources
 
-    if interaction.interaction_predicted and interaction.confidence > _HIGH_CONFIDENCE_THRESHOLD:
+    if interaction.evidence == "major":
         explanation = (
-            f"Flagged high risk: adverse event indicators present ({trigger_text}), and the drug "
-            f"graph shows a documented interaction ({path_text}, confidence {interaction.confidence:.2f})."
-        )
-        if evidence.sources:
-            explanation += f" Supported by {len(evidence.sources)} retrieved source(s), including '{evidence.sources[0].title}'."
+            f"Flagged high risk: adverse event indicators present ({trigger_text}), and the drug graph "
+            f"shows a documented major interaction ({path_text})."
+        ) + sources_note
         return "high", explanation, contributing_reports, contributing_sources
 
-    if interaction.interaction_predicted and _MEDIUM_CONFIDENCE_LOW <= interaction.confidence <= _HIGH_CONFIDENCE_THRESHOLD:
+    if interaction.evidence in ("moderate", "weak"):
         explanation = (
-            f"Flagged medium risk: adverse event indicators present ({trigger_text}), and a possible "
-            f"interaction was found with moderate confidence ({path_text}, confidence {interaction.confidence:.2f})."
-        )
-        if evidence.sources:
-            explanation += f" Supported by {len(evidence.sources)} retrieved source(s), including '{evidence.sources[0].title}'."
+            f"Flagged medium risk: adverse event indicators present ({trigger_text}), and the drug graph "
+            f"shows a documented {interaction.evidence}-evidence interaction ({path_text})."
+        ) + sources_note
         return "medium", explanation, contributing_reports, contributing_sources
 
-    if not interaction.interaction_predicted and top_relevance >= _EVIDENCE_RELEVANCE_THRESHOLD:
+    if interaction.interaction_predicted:
+        explanation = (
+            f"Flagged medium risk: adverse event indicators present ({trigger_text}); no documented "
+            f"interaction was found in the drug graph, but the trained model flagged a possible "
+            f"structural link ({path_text}, model confidence {interaction.confidence:.2f}) — not a "
+            f"confirmed interaction."
+        ) + sources_note
+        return "medium", explanation, contributing_reports, contributing_sources
+
+    if top_relevance >= _EVIDENCE_RELEVANCE_THRESHOLD:
         explanation = (
             f"Flagged medium risk: adverse event indicators present ({trigger_text}); no documented "
             f"interaction was found in the drug graph, but retrieved literature is relevant (top match "

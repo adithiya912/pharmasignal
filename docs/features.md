@@ -28,12 +28,30 @@ any prompt: "build the next unchecked item under X".
     interaction, single-drug/no-interaction, negative control) plus a
     4th ad hoc single-drug case — all produced correct, non-mocked
     risk_level/explanation/contributing_reports/contributing_sources.
-  - Still left out, per this session's scope: no Supabase persistence
-    (reports live in React state, gone on refresh), no doctor-side
-    visibility.
-- [ ] View history of own past reports
-  - Still session-only (React state) — needs Supabase persistence to
-    survive a refresh or count as real history.
+  - Supabase persistence added: on completion, the full assessment
+    (report_text, extracted, classification, interaction, evidence,
+    risk_score) is saved via POST /api/reports to a `reports` table
+    (schema in web/supabase/migrations/0001_create_reports_table.sql).
+    Still left out: doctor-side visibility.
+- [x] View history of own past reports
+  - GET /api/reports (and page.tsx's initial server-side fetch) return
+    only rows where patient_user_id matches the signed-in Clerk user —
+    enforced in application code, since the Supabase client uses the
+    service_role key (server-only, never reachable from the browser)
+    rather than Supabase Auth/RLS-by-JWT. RLS is still enabled on the
+    table with zero permissive policies, as defense in depth: even a
+    leaked anon key would expose nothing.
+  - Renders as more nodes further down the same signal line (collapsed
+    to risk badge + date by default, click to expand the full result —
+    reuses the exact same result component the live view uses, nothing
+    rebuilt), not a separate table/list UI, per design-brief.md.
+  - Verified: 2 reports submitted as one test patient (created via
+    Clerk's Backend API), hard page refresh, both reappeared with
+    correct risk levels and full detail on expand. A second test
+    patient, separate browser context, saw exactly 0 reports —
+    confirmed both via the rendered page and a direct GET /api/reports
+    call. Both test patients and their test data deleted after
+    verification.
 - [ ] Check drug interactions between 2+ medicines
   - /predict-interaction is now wired into the report pipeline
     (checked automatically per submitted report), but there's no
@@ -48,23 +66,23 @@ any prompt: "build the next unchecked item under X".
     brief's "line reacts to an anomaly" moment. Raw NER output
     (drugs/symptoms/dosages/duration/severity) demoted to a collapsed
     "Extracted details" disclosure, no longer the headline.
-  - Known gap surfaced by this session's end-to-end testing (not
-    something to silently paper over): /predict-interaction's GNN
-    (added in an earlier ml-services session) doesn't preserve the
-    evidence-label confidence scale (major=0.9/moderate=0.6/weak=0.3)
-    that /risk-score's Medium/High threshold (strict >0.6) was
-    calibrated against in an even earlier session — the GNN was
-    trained with a binary "edge exists" target, so any known direct
-    interaction tends to score close to 1.0 regardless of its
-    original evidence label. Concretely: metformin+ciprofloxacin
-    (seeded as "moderate" evidence) now scores confidence 0.87 from
-    the GNN and lands **High**, not the **Medium** the threshold was
-    designed to produce for moderate-evidence interactions. This is a
-    real cross-session consequence, not a bug introduced here — flagged
-    for a future ml-services session to either recalibrate
-    /risk-score's thresholds against the GNN's actual output
-    distribution, or have /predict-interaction expose something
-    closer to the original evidence tier alongside its probability.
+  - **RESOLVED** (was flagged as a known gap, now fixed and verified):
+    /predict-interaction's GNN doesn't preserve evidence tiers in its
+    confidence score — querying all 9 seeded edges directly showed
+    moderate (metformin-ciprofloxacin, 0.869) scoring *higher* than
+    two major edges (0.666, 0.671), and weak (0.598) landing inside
+    the major range too. No threshold on GNN confidence alone could
+    ever separate these, so thresholds were dropped entirely for
+    direct edges: /predict-interaction now also returns `evidence`
+    (major/moderate/weak/null), looked up directly from the Neo4j
+    edge rather than derived from the GNN. /risk-score uses `evidence`
+    as its primary signal (major->High, moderate/weak->Medium) and
+    only falls back to the GNN's `confidence` (capped at Medium, never
+    High) when there's no direct edge — i.e. for genuinely unseen
+    pairs, which is exactly the case a GNN is supposed to help with,
+    and exactly where it shouldn't be trusted at High-risk stakes with
+    9 training edges. Re-verified end-to-end: warfarin+amoxicillin
+    (major) -> High; metformin+ciprofloxacin (moderate) -> Medium.
 - [ ] Upload supporting documents (optional)
 
 ## Doctor

@@ -55,13 +55,16 @@ def run_pipeline(report_id: str, report_text: str) -> None:
 
     drugs = extracted.drugs
     if len(drugs) >= 2:
-        interaction_predicted, interaction_confidence, graph_path = predict_interaction(drugs[0], drugs[1])
+        interaction_predicted, interaction_confidence, graph_path, interaction_evidence = predict_interaction(
+            drugs[0], drugs[1]
+        )
     else:
-        interaction_predicted, interaction_confidence, graph_path = False, 0.0, []
+        interaction_predicted, interaction_confidence, graph_path, interaction_evidence = False, 0.0, [], None
     interaction = PredictInteractionResponse(
         interaction_predicted=interaction_predicted,
         confidence=interaction_confidence,
         graph_path=graph_path,
+        evidence=interaction_evidence,
     )
 
     query = " ".join(drugs) if drugs else " ".join(extracted.symptoms)

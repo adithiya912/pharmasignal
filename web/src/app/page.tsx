@@ -1,9 +1,11 @@
 import { UserButton } from "@clerk/nextjs";
 import { currentUser } from "@clerk/nextjs/server";
 import { ReportForm } from "@/components/report-form";
+import { listReportsForUser } from "@/lib/reports";
 
 export default async function Home() {
   const user = await currentUser();
+  const initialReports = user ? await listReportsForUser(user.id) : [];
 
   return (
     <div className="flex-1 bg-navy">
@@ -18,7 +20,7 @@ export default async function Home() {
       </header>
 
       <main className="mx-auto max-w-3xl px-6 pb-24 sm:px-8">
-        <ReportForm />
+        <ReportForm initialReports={initialReports} />
       </main>
     </div>
   );

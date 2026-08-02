@@ -28,7 +28,7 @@ PAIRS = [
 
 def main() -> None:
     for drug_a, drug_b in PAIRS:
-        interaction_predicted, confidence, graph_path = predict_interaction(drug_a, drug_b)
+        interaction_predicted, confidence, graph_path, evidence = predict_interaction(drug_a, drug_b)
         print(f"\n=== {drug_a} + {drug_b} ===")
         print(
             json.dumps(
@@ -36,6 +36,7 @@ def main() -> None:
                     "interaction_predicted": interaction_predicted,
                     "confidence": confidence,
                     "graph_path": graph_path,
+                    "evidence": evidence,
                 },
                 indent=2,
             )

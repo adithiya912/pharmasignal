@@ -71,10 +71,14 @@ class PredictInteractionRequest(BaseModel):
     drug_b: str
 
 
+InteractionEvidenceTier = Literal["major", "moderate", "weak"]
+
+
 class PredictInteractionResponse(BaseModel):
     interaction_predicted: bool
     confidence: float
     graph_path: list[str]
+    evidence: InteractionEvidenceTier | None = None
 
 
 RiskLevel = Literal["low", "medium", "high"]

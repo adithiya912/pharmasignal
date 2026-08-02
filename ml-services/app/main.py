@@ -52,11 +52,12 @@ def retrieve_evidence_endpoint(request: EvidenceRequest) -> EvidenceResponse:
 
 @app.post("/predict-interaction", response_model=PredictInteractionResponse)
 def predict_interaction_endpoint(request: PredictInteractionRequest) -> PredictInteractionResponse:
-    interaction_predicted, confidence, graph_path = predict_interaction(request.drug_a, request.drug_b)
+    interaction_predicted, confidence, graph_path, evidence = predict_interaction(request.drug_a, request.drug_b)
     return PredictInteractionResponse(
         interaction_predicted=interaction_predicted,
         confidence=confidence,
         graph_path=graph_path,
+        evidence=evidence,
     )
 
 

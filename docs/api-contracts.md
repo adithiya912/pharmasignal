@@ -62,9 +62,20 @@ Output:
 {
   "interaction_predicted": true,
   "confidence": 0.0,
-  "graph_path": ["drug_a", "intermediate_drug", "drug_b"]
+  "graph_path": ["drug_a", "intermediate_drug", "drug_b"],
+  "evidence": "major | moderate | weak | null"
 }
 ```
+`evidence` is the seeded edge's documented evidence tier when drug_a
+and drug_b share a direct graph edge — sourced from Neo4j, not the
+GNN. It's `null` when there's no direct edge (indirect path or no
+path at all), since an evidence tier only exists for documented
+interactions, not GNN-inferred ones. Added because the GNN's
+confidence alone doesn't preserve evidence tiers at this data scale
+(a "moderate" edge scored higher than several "major" edges in
+testing) — /risk-score uses `evidence` as its primary signal for
+direct edges and falls back to `confidence` only when `evidence` is
+null. See docs/features.md for the full writeup.
 
 ## POST /retrieve-evidence
 Input:
