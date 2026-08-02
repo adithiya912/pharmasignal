@@ -62,6 +62,24 @@ any prompt: "build the next unchecked item under X".
     downstream lookup of report text by report_ids after clustering.
 - [ ] Drug knowledge graph in Neo4j (drug-drug relationships)
 - [ ] GNN: predict previously-unknown drug interactions
-- [ ] RAG: retrieve evidence from PubMed / DrugBank / FDA labels
+- [x] RAG: retrieve evidence from PubMed / DrugBank / FDA labels
+  - v0 is a small local corpus (17 entries covering ibuprofen,
+    metformin, warfarin, amoxicillin), not live PubMed/DrugBank/FDA
+    API calls. Every title/URL/excerpt was independently verified
+    against the live page before being added (via direct fetch, not
+    just a search snippet) — no invented citations. Retrieval is
+    cosine similarity over sentence-transformers/all-MiniLM-L6-v2
+    embeddings (same model as /cluster), top-5 by relevance.
+  - Verification note: DrugBank blocked plain fetches (bot
+    protection) but resolved with a browser User-Agent header — the 4
+    DrugBank entries are real, confirmed via page meta tags. The
+    accessdata.fda.gov PDF label URLs found during research had gone
+    stale (404); the 4 "FDA" entries instead link to DailyMed, NIH's
+    official public mirror of the same FDA-approved label content,
+    under stable URLs that were confirmed live.
+  - Known gap: this is a 17-entry corpus covering only the 4 drugs in
+    our test data — needs a real ingestion pipeline (PubMed/DrugBank/
+    FDA API or bulk download) before this generalizes to arbitrary
+    drugs/symptoms.
 - [ ] Risk scoring: fuse report + GNN + evidence into Low/Medium/High
   with explanation

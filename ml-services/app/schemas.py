@@ -46,3 +46,21 @@ class ClusterInfo(BaseModel):
 
 class ClusterResponse(BaseModel):
     clusters: list[ClusterInfo]
+
+
+class EvidenceRequest(BaseModel):
+    query: str
+
+
+EvidenceSourceType = Literal["PubMed", "DrugBank", "FDA"]
+
+
+class EvidenceSource(BaseModel):
+    title: str
+    source: EvidenceSourceType
+    url: str
+    relevance: float
+
+
+class EvidenceResponse(BaseModel):
+    sources: list[EvidenceSource]

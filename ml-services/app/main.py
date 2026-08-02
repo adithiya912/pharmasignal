@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from app.classify import classify_report
 from app.cluster import cluster_reports
+from app.evidence import retrieve_evidence
 from app.ner_extraction import extract_entities
 from app.schemas import (
     ClassifyRequest,
@@ -9,6 +10,9 @@ from app.schemas import (
     ClusterInfo,
     ClusterRequest,
     ClusterResponse,
+    EvidenceRequest,
+    EvidenceResponse,
+    EvidenceSource,
     ExtractRequest,
     ExtractResponse,
 )
@@ -32,3 +36,9 @@ def cluster(request: ClusterRequest) -> ClusterResponse:
     reports = [r.model_dump() for r in request.reports]
     clusters = cluster_reports(reports)
     return ClusterResponse(clusters=[ClusterInfo(**c) for c in clusters])
+
+
+@app.post("/retrieve-evidence", response_model=EvidenceResponse)
+def retrieve_evidence_endpoint(request: EvidenceRequest) -> EvidenceResponse:
+    sources = retrieve_evidence(request.query)
+    return EvidenceResponse(sources=[EvidenceSource(**s) for s in sources])
