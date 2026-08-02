@@ -60,8 +60,39 @@ any prompt: "build the next unchecked item under X".
     get an inaccurate or overly generic label. Fixing this properly
     needs either passing report text through to /cluster, or a
     downstream lookup of report text by report_ids after clustering.
-- [ ] Drug knowledge graph in Neo4j (drug-drug relationships)
+- [x] Drug knowledge graph in Neo4j (drug-drug relationships)
+  - Seeded via scripts/seed_graph.py (idempotent, MERGE-based, re-run
+    freely). 9 Drug nodes, 9 INTERACTS_WITH relationships covering
+    ibuprofen, metformin, warfarin, amoxicillin, plus aspirin,
+    omeprazole, fluconazole, ciprofloxacin, sulfamethoxazole-
+    trimethoprim. Every pair independently verified against PubMed
+    case reports/studies or an FDA safety communication before being
+    added — none invented. Each relationship carries mechanism,
+    evidence (major/moderate/weak), and source properties for
+    traceability.
 - [ ] GNN: predict previously-unknown drug interactions
+  - NOT built yet — /predict-interaction v0 (below) is a direct graph
+    traversal, not a trained model, so this item stays unchecked.
+    - v0 /predict-interaction: MATCH shortestPath over
+      INTERACTS_WITH, 1-2 hops, using app/predict_interaction.py.
+      Working and tested (direct hit, indirect 2-hop, no-path all
+      confirmed sane).
+    - Semantic deviation from what a GNN would return (flagged per
+      request, not silently redefined): a direct edge (1 hop) is a
+      *documented* interaction — confidence is derived from the
+      edge's evidence label (major=0.9/moderate=0.6/weak=0.3), i.e.
+      "how well-established is this known interaction," not a
+      model's calibrated probability. A 2-hop path (shared
+      intermediate drug, no direct edge) is NOT a documented
+      interaction between the two queried drugs — it's a much
+      weaker structural hint, decayed to 0.5 × min(edge confidences).
+      No path within 2 hops returns interaction_predicted=false with
+      LOW confidence (0.1), not high confidence — absence of an edge
+      in a 9-drug seed graph means "no data," not "proven safe." A
+      trained GNN could generalize to previously-unseen pairs from
+      learned structure; this graph query cannot — it only reports
+      what's already encoded, so it does not actually satisfy
+      "predict previously-unknown drug interactions."
 - [x] RAG: retrieve evidence from PubMed / DrugBank / FDA labels
   - v0 is a small local corpus (17 entries covering ibuprofen,
     metformin, warfarin, amoxicillin), not live PubMed/DrugBank/FDA

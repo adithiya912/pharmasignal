@@ -4,6 +4,7 @@ from app.classify import classify_report
 from app.cluster import cluster_reports
 from app.evidence import retrieve_evidence
 from app.ner_extraction import extract_entities
+from app.predict_interaction import predict_interaction
 from app.schemas import (
     ClassifyRequest,
     ClassifyResponse,
@@ -15,6 +16,8 @@ from app.schemas import (
     EvidenceSource,
     ExtractRequest,
     ExtractResponse,
+    PredictInteractionRequest,
+    PredictInteractionResponse,
 )
 
 app = FastAPI(title="PharmaSignal ML Services")
@@ -42,3 +45,13 @@ def cluster(request: ClusterRequest) -> ClusterResponse:
 def retrieve_evidence_endpoint(request: EvidenceRequest) -> EvidenceResponse:
     sources = retrieve_evidence(request.query)
     return EvidenceResponse(sources=[EvidenceSource(**s) for s in sources])
+
+
+@app.post("/predict-interaction", response_model=PredictInteractionResponse)
+def predict_interaction_endpoint(request: PredictInteractionRequest) -> PredictInteractionResponse:
+    interaction_predicted, confidence, graph_path = predict_interaction(request.drug_a, request.drug_b)
+    return PredictInteractionResponse(
+        interaction_predicted=interaction_predicted,
+        confidence=confidence,
+        graph_path=graph_path,
+    )

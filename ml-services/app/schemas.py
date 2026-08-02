@@ -64,3 +64,14 @@ class EvidenceSource(BaseModel):
 
 class EvidenceResponse(BaseModel):
     sources: list[EvidenceSource]
+
+
+class PredictInteractionRequest(BaseModel):
+    drug_a: str
+    drug_b: str
+
+
+class PredictInteractionResponse(BaseModel):
+    interaction_predicted: bool
+    confidence: float
+    graph_path: list[str]
