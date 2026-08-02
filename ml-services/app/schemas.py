@@ -75,3 +75,20 @@ class PredictInteractionResponse(BaseModel):
     interaction_predicted: bool
     confidence: float
     graph_path: list[str]
+
+
+RiskLevel = Literal["low", "medium", "high"]
+
+
+class RiskScoreRequest(BaseModel):
+    report_id: str
+    classification: ClassifyResponse
+    interaction: PredictInteractionResponse
+    evidence: EvidenceResponse
+
+
+class RiskScoreResponse(BaseModel):
+    risk_level: RiskLevel
+    explanation: str
+    contributing_reports: list[str]
+    contributing_sources: list[str]

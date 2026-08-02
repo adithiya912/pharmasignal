@@ -112,5 +112,33 @@ any prompt: "build the next unchecked item under X".
     our test data — needs a real ingestion pipeline (PubMed/DrugBank/
     FDA API or bulk download) before this generalizes to arbitrary
     drugs/symptoms.
-- [ ] Risk scoring: fuse report + GNN + evidence into Low/Medium/High
+- [x] Risk scoring: fuse report + GNN + evidence into Low/Medium/High
   with explanation
+  - Rule-based v0 (app/risk_score.py), not a trained fusion model.
+    High: is_adverse_event AND interaction confidence > 0.6 (major
+    evidence only). Medium: is_adverse_event AND (interaction
+    confidence 0.3-0.6 inclusive, i.e. moderate/weak-direct or
+    decayed-indirect, OR no interaction found but top retrieved
+    evidence relevance >= 0.5). Low: everything else, or
+    is_adverse_event=false.
+  - contributing_reports passes through /classify's trigger as-is;
+    contributing_sources passes through /retrieve-evidence's sources
+    (title/source/url) as-is — nothing invented at this stage, only
+    upstream outputs surfaced.
+  - Threshold note: the High/Medium boundary (0.6) was deliberately
+    set to a strict `>` so that /predict-interaction's "moderate"
+    evidence weight (exactly 0.6) lands Medium rather than High,
+    matching intent confirmed with the user — verified via 3
+    end-to-end pipeline runs (warfarin+amoxicillin -> High,
+    metformin+ciprofloxacin -> Medium, negative control -> Low).
+  - Known gap: the explanation text is built only from what
+    /predict-interaction's contracted output shape actually carries
+    (graph_path, confidence) — it does NOT include mechanism-level
+    detail (e.g. "INR/bleeding risk") since that lives on the Neo4j
+    edge and isn't part of /predict-interaction's response contract.
+    Adding it would need a similar contract extension to how
+    "trigger" was added to /classify.
+  - The 0.5 evidence-relevance threshold for the "no interaction but
+    relevant literature" Medium path is a first-pass estimate based
+    on the relevance distribution seen in /retrieve-evidence testing,
+    not independently validated.

@@ -5,6 +5,7 @@ from app.cluster import cluster_reports
 from app.evidence import retrieve_evidence
 from app.ner_extraction import extract_entities
 from app.predict_interaction import predict_interaction
+from app.risk_score import compute_risk_score
 from app.schemas import (
     ClassifyRequest,
     ClassifyResponse,
@@ -18,6 +19,8 @@ from app.schemas import (
     ExtractResponse,
     PredictInteractionRequest,
     PredictInteractionResponse,
+    RiskScoreRequest,
+    RiskScoreResponse,
 )
 
 app = FastAPI(title="PharmaSignal ML Services")
@@ -54,4 +57,17 @@ def predict_interaction_endpoint(request: PredictInteractionRequest) -> PredictI
         interaction_predicted=interaction_predicted,
         confidence=confidence,
         graph_path=graph_path,
+    )
+
+
+@app.post("/risk-score", response_model=RiskScoreResponse)
+def risk_score_endpoint(request: RiskScoreRequest) -> RiskScoreResponse:
+    risk_level, explanation, contributing_reports, contributing_sources = compute_risk_score(
+        request.classification, request.interaction, request.evidence
+    )
+    return RiskScoreResponse(
+        risk_level=risk_level,
+        explanation=explanation,
+        contributing_reports=contributing_reports,
+        contributing_sources=contributing_sources,
     )
