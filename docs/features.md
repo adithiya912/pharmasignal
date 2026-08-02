@@ -4,8 +4,29 @@ Mark items done as they're built. Reference this file when scoping
 any prompt: "build the next unchecked item under X".
 
 ## Patient
-- [ ] Register/Login (Clerk)
+- [x] Register/Login (Clerk)
+  - Real Clerk integration (not scaffolded): clerkMiddleware gate via
+    src/proxy.ts (Next.js 16 renamed middleware.ts -> proxy.ts — see
+    node_modules/next/dist/docs/.../upgrading/version-16.md), sign-in/
+    sign-up pages, ClerkProvider in the root layout. Verified with a
+    real end-to-end sign-in (test user created via Clerk's Backend
+    API, signed in through the actual UI including the "new device"
+    email-code challenge) — not just "the code compiles."
+  - Single role only (patient) — no doctor/admin roles, org support,
+    or role-based routing yet.
 - [ ] Report side effects (free-text form)
+  - Working end-to-end for the /extract path: patient submits
+    free-text -> web app's /api/extract route proxies server-side to
+    ml-services (avoids needing CORS changes in ml-services) ->
+    extracted drugs/symptoms/dosages/duration/severity render as a
+    node on the signal line. Verified live via Playwright against the
+    real dev server + real ml-services process (not mocked) — see
+    screenshot description in conversation.
+  - Left unchecked because scope explicitly excluded for this
+    session: no Supabase persistence (reports live in React state,
+    gone on refresh), no /classify or /risk-score wiring (so nothing
+    is actually triaged yet, only extracted), no doctor-side
+    visibility.
 - [ ] View history of own past reports
 - [ ] Check drug interactions between 2+ medicines
 - [ ] Ask medicine-related questions (RAG-backed Q&A)
