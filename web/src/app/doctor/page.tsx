@@ -1,9 +1,19 @@
 import { UserButton } from "@clerk/nextjs";
 import { DoctorQueue } from "@/components/doctor-queue";
+import { TrendingClusters } from "@/components/trending-clusters";
+import { clusterReports } from "@/lib/admin-insights";
 import { listAllReportsForDoctor } from "@/lib/reports";
 
 export default async function DoctorPage() {
   const reports = await listAllReportsForDoctor();
+
+  let clusters = null;
+  let clusterError: string | undefined;
+  try {
+    clusters = await clusterReports(reports);
+  } catch (err) {
+    clusterError = err instanceof Error ? err.message : "Unknown error";
+  }
 
   return (
     <div className="flex-1 bg-navy">
@@ -16,6 +26,11 @@ export default async function DoctorPage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-6 pb-24 sm:px-8">
+        <section className="mb-10">
+          <h2 className="mb-4 font-display text-lg italic text-foreground/70">Trending</h2>
+          <TrendingClusters clusters={clusters} error={clusterError} />
+        </section>
+
         <DoctorQueue reports={reports} />
       </main>
     </div>

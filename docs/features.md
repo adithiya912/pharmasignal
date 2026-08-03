@@ -115,7 +115,21 @@ any prompt: "build the next unchecked item under X".
     (last 6 chars, e.g. "Patient 0ZPZLF") — "enough to distinguish
     cases" per scope, not a name lookup (would need extra Clerk
     Backend API calls per unique patient, not needed here).
-- [ ] Search reports by drug or symptom
+- [x] Search reports by drug or symptom
+  - Client-side filter over the already-loaded queue (components/
+    doctor-queue.tsx) — substring match (case-insensitive) against
+    each report's extracted.drugs and extracted.symptoms. No new
+    backend endpoint; the queue is a single doctor's worth of reports,
+    not large enough yet to need server-side search.
+  - Known gap, inherited from NER: search only matches entities the
+    extractor actually tagged, not the raw report text. E.g.
+    "joint pain and swelling" reports get symptoms extracted as
+    separate "pain"/"swelling" tokens (see the NER known-gap note
+    under ML Pipeline below), so searching "joint" finds nothing even
+    though multiple reports describe joint pain — searching "swelling"
+    or "pain" does. Verified both cases directly: "warfarin" correctly
+    narrowed 5 reports to the 2 that mention it; "swelling" correctly
+    matched the 3 that have it as an extracted symptom.
 - [x] View extracted entities per report (drug/symptom/dose/duration)
   - Reused, not rebuilt: clicking a queue row expands the exact same
     AssessmentDetail component the patient view uses (now extracted
@@ -125,9 +139,27 @@ any prompt: "build the next unchecked item under X".
   - Same reused component: risk badge, explanation, Basis and
     Evidence (clickable PubMed/DrugBank/FDA links) all render
     identically to the patient view.
-- [ ] Monitor trending side effects (cluster view)
-  - Explicitly out of scope this session — that's /cluster
-    integration across many reports, a separate feature.
+- [x] Monitor trending side effects (cluster view)
+  - New "Trending" section (components/trending-clusters.tsx) above
+    the triage queue, calling the real /cluster endpoint (via the
+    /embed + /cluster helper in lib/admin-insights.ts, added for the
+    admin dashboard — reused here as-is, not duplicated) over every
+    report currently in the queue. Never fabricated: if ml-services or
+    /embed/cluster fail, shows an honest "could not compute" message.
+  - Reuses SignalLine/SignalNode exactly as the admin dashboard's
+    cluster line does — size-based tone/indent/spike (coral + pulled
+    forward + spike animation at 3+ reports), a second independent
+    signal line above the queue's own, per design-brief.md's pattern
+    of stacking multiple independent lines rather than merging them.
+  - Verified with 5 real reports across 2 patients: the Trending
+    section showed a genuine 4-report "joint pain and swelling"
+    cluster (spiking/coral) and a genuine 1-report "nausea and
+    vomiting" cluster (sage) — not placeholder text, and the 4-report
+    grouping pulled in one report whose text didn't literally say
+    "joint pain" (the warfarin/amoxicillin bruising+dizziness report),
+    a real embedding-similarity artifact rather than a fabricated
+    result — consistent with the small-sample-threshold caveat already
+    documented for /cluster below.
 - [x] Access supporting medical literature per finding
   - Same Evidence links as above, already clickable through to the
     source.
