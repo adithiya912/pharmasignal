@@ -325,22 +325,23 @@ any prompt: "build the next unchecked item under X".
 - [x] Risk scoring: fuse report + GNN + evidence into Low/Medium/High
   with explanation
   - Rule-based v0 (app/risk_score.py), not a trained fusion model.
-    High: is_adverse_event AND interaction confidence > 0.6 (major
-    evidence only). Medium: is_adverse_event AND (interaction
-    confidence 0.3-0.6 inclusive, i.e. moderate/weak-direct or
-    decayed-indirect, OR no interaction found but top retrieved
-    evidence relevance >= 0.5). Low: everything else, or
-    is_adverse_event=false.
+    Not is_adverse_event -> Low. interaction.evidence == "major" ->
+    High. evidence in (moderate, weak) -> Medium. No direct edge but
+    the GNN's interaction_predicted is true -> Medium (capped there,
+    never High — see the GNN section's honest accuracy note above for
+    why an inferred-only signal shouldn't carry High-risk stakes).
+    Otherwise, top retrieved evidence relevance >= 0.5 -> Medium. Else
+    Low. **Superseded the original confidence-threshold design** (see
+    the Patient section's "RESOLVED" note above) once testing showed
+    the GNN's confidence doesn't preserve evidence tiers at all —
+    `evidence`, not `confidence`, is now the primary signal for any
+    pair with a direct graph edge.
   - contributing_reports passes through /classify's trigger as-is;
     contributing_sources passes through /retrieve-evidence's sources
     (title/source/url) as-is — nothing invented at this stage, only
     upstream outputs surfaced.
-  - Threshold note: the High/Medium boundary (0.6) was deliberately
-    set to a strict `>` so that /predict-interaction's "moderate"
-    evidence weight (exactly 0.6) lands Medium rather than High,
-    matching intent confirmed with the user — verified via 3
-    end-to-end pipeline runs (warfarin+amoxicillin -> High,
-    metformin+ciprofloxacin -> Medium, negative control -> Low).
+  - Verified via 3 end-to-end pipeline runs (warfarin+amoxicillin ->
+    High, metformin+ciprofloxacin -> Medium, negative control -> Low).
   - Known gap: the explanation text is built only from what
     /predict-interaction's contracted output shape actually carries
     (graph_path, confidence) — it does NOT include mechanism-level
