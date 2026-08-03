@@ -43,6 +43,11 @@ interface SignalNodeProps {
    * meaningful for amber/coral; pass true once, when the risk result
    * first lands, not on every re-render. */
   spike?: boolean;
+  /** Tailwind max-width class for the panel. Defaults to max-w-2xl.
+   * The doctor triage queue varies this by urgency — "routine ones
+   * sit back and smaller" per design-brief.md — without touching
+   * every caller's default sizing. */
+  maxWidth?: string;
   children: ReactNode;
   className?: string;
 }
@@ -52,6 +57,7 @@ export function SignalNode({
   tone = "sage",
   indent = 0,
   spike = false,
+  maxWidth = "max-w-2xl",
   children,
   className = "",
 }: SignalNodeProps) {
@@ -68,7 +74,7 @@ export function SignalNode({
         )}
         <span aria-hidden className={`relative rounded-full ${markerToneClass[tone]}`} />
       </span>
-      <div className={`max-w-2xl ${indentClass} ${className}`}>{children}</div>
+      <div className={`${maxWidth} ${indentClass} ${className}`}>{children}</div>
     </div>
   );
 }

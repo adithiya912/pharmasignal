@@ -28,6 +28,14 @@ class ClassifyResponse(BaseModel):
     trigger: list[str]
 
 
+class EmbedRequest(BaseModel):
+    report_text: str
+
+
+class EmbedResponse(BaseModel):
+    embedding: list[float]
+
+
 class ReportEmbedding(BaseModel):
     id: str
     embedding: list[float]

@@ -33,6 +33,22 @@ Output:
 }
 ```
 
+## POST /embed
+Input:
+```json
+{ "report_text": "string" }
+```
+Output:
+```json
+{ "embedding": [0.0] }
+```
+Thin wrapper around the sentence-transformers model already used
+internally by `/cluster` and `/retrieve-evidence` (`app/embeddings.py`)
+— added so a caller that only has report text (e.g. the admin trend
+dashboard, clustering reports fetched from Supabase after the fact)
+can produce the `embedding` that `/cluster` requires, without
+duplicating the model elsewhere.
+
 ## POST /cluster
 Input:
 ```json

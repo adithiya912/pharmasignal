@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from app.classify import classify_report
 from app.cluster import cluster_reports
+from app.embeddings import embed_text
 from app.evidence import retrieve_evidence
 from app.ner_extraction import extract_entities
 from app.predict_interaction import predict_interaction
@@ -12,6 +13,8 @@ from app.schemas import (
     ClusterInfo,
     ClusterRequest,
     ClusterResponse,
+    EmbedRequest,
+    EmbedResponse,
     EvidenceRequest,
     EvidenceResponse,
     EvidenceSource,
@@ -35,6 +38,11 @@ def extract(request: ExtractRequest) -> ExtractResponse:
 def classify(request: ClassifyRequest) -> ClassifyResponse:
     is_adverse_event, confidence, trigger = classify_report(request.report_text, request.extracted)
     return ClassifyResponse(is_adverse_event=is_adverse_event, confidence=confidence, trigger=trigger)
+
+
+@app.post("/embed", response_model=EmbedResponse)
+def embed(request: EmbedRequest) -> EmbedResponse:
+    return EmbedResponse(embedding=embed_text(request.report_text))
 
 
 @app.post("/cluster", response_model=ClusterResponse)

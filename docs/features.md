@@ -86,19 +86,104 @@ any prompt: "build the next unchecked item under X".
 - [ ] Upload supporting documents (optional)
 
 ## Doctor
-- [ ] Review incoming patient reports (queue view)
+- [x] Review incoming patient reports (queue view)
+  - /doctor page + DoctorQueue component, listing every patient's
+    reports (lib/reports.ts's listAllReportsForDoctor(), no
+    patient_user_id filter — the doctor-only unfiltered counterpart
+    to the patient-side listReportsForUser()). Reverse chronological
+    within each risk tier, risk tier first — see next item.
+  - Role gate: publicMetadata.role === "doctor" on the Clerk user
+    (lib/roles.ts's isCurrentUserDoctor()), set manually per-user for
+    now (Clerk dashboard -> user -> Public metadata, or the Backend
+    API) — a v0 allowlist-style check, not a role-management system.
+    Checked independently in TWO places, not just hidden nav: the
+    /doctor layout (redirects non-doctors to `/`) and the
+    /api/doctor/reports route itself (403), since a layout redirect
+    alone doesn't stop a direct request to the API route. This is the
+    resource-based pattern Clerk's own SDK currently recommends over
+    middleware/proxy.ts path-matching (see the createRouteMatcher
+    deprecation warning surfaced during the patient-auth session).
+  - Verified: patient A submitted a High-risk report, patient B a
+    Low-risk one (2 separate Clerk accounts). Signed in as a 3rd
+    account with publicMetadata.role="doctor" and confirmed the queue
+    showed BOTH — 2 distinct patient_user_id values, correct risk
+    levels. Separately confirmed patient A hitting /doctor directly
+    got redirected to `/` (never saw queue content) AND got 403 from
+    GET /api/doctor/reports directly. All test accounts + data
+    deleted after verification.
+  - Patient identifier is a short tag derived from the Clerk user id
+    (last 6 chars, e.g. "Patient 0ZPZLF") — "enough to distinguish
+    cases" per scope, not a name lookup (would need extra Clerk
+    Backend API calls per unique patient, not needed here).
 - [ ] Search reports by drug or symptom
-- [ ] View extracted entities per report (drug/symptom/dose/duration)
-- [ ] View interaction risk score + supporting evidence per report
+- [x] View extracted entities per report (drug/symptom/dose/duration)
+  - Reused, not rebuilt: clicking a queue row expands the exact same
+    AssessmentDetail component the patient view uses (now extracted
+    into components/assessment-detail.tsx so both sides import the
+    same code) — same "Extracted details" disclosure, same tags.
+- [x] View interaction risk score + supporting evidence per report
+  - Same reused component: risk badge, explanation, Basis and
+    Evidence (clickable PubMed/DrugBank/FDA links) all render
+    identically to the patient view.
 - [ ] Monitor trending side effects (cluster view)
-- [ ] Access supporting medical literature per finding
-- [ ] Receive explainable AI recommendations (not just a score)
+  - Explicitly out of scope this session — that's /cluster
+    integration across many reports, a separate feature.
+- [x] Access supporting medical literature per finding
+  - Same Evidence links as above, already clickable through to the
+    source.
+- [x] Receive explainable AI recommendations (not just a score)
+  - The risk_score.explanation plain-language text (not a bare
+    risk_level) is what's shown — same honesty constraint as the
+    patient view, nothing doctor-specific invented here.
 
 ## Administrator / Regulator
-- [ ] Nationwide/institutional adverse-event trend dashboard
+- [x] Nationwide/institutional adverse-event trend dashboard
+  - "admin" role via publicMetadata.role, same v0 allowlist pattern as
+    doctor (lib/roles.ts's isCurrentUserAdmin), checked independently
+    in both the /admin layout (redirect to /) and /api/admin/export
+    (403) — same resource-based reasoning as the doctor role (a layout
+    redirect alone doesn't stop a direct request to the API route).
+  - Institution-wide, not literally "nationwide" — there's no
+    region/institution field anywhere in the data model, so this is
+    aggregate stats across every report on file, full stop.
+  - Layout per design-brief.md: NOT a stat-card grid. A plain-text
+    stats line (total + risk breakdown + top symptoms), then multiple
+    SignalLine instances side by side — one per top drug (capped at 6
+    by report count, overflow noted rather than silently dropped) —
+    each showing that drug's reports as nodes colored/dated by risk
+    tier. Reuses the existing SignalLine/SignalNode components as-is,
+    no changes to signal-line.tsx.
+  - Symptom clusters render as their own SignalLine below, sourced
+    from the REAL /cluster endpoint (not fabricated): added a new
+    minimal POST /embed endpoint to ml-services (thin wrapper around
+    the existing embed_text() used internally by /cluster) since the
+    /cluster contract only accepts pre-computed embeddings and nothing
+    previously exposed that step to a caller with just report text.
+    See docs/api-contracts.md. If ml-services is down or /embed//cluster
+    error, the dashboard shows an honest "could not compute clusters"
+    message — never a fabricated result.
+  - Verified: 2 test patients submitted 4 reports total (1 high, 2
+    medium, 1 low) across warfarin, metformin, ciprofloxacin,
+    paracetamol, amoxicillin. Signed in as a test admin account and
+    confirmed the dashboard showed the correct aggregate counts, a
+    signal line per drug with correctly risk-toned/dated nodes, and a
+    real 3-report cluster from the live /cluster call. Separately
+    confirmed a doctor account hitting /admin got redirected to `/`
+    (no "Trend dashboard" text ever rendered) AND got 403 from GET
+    /api/admin/export directly. All test accounts + data deleted after
+    verification.
 - [ ] High-risk drug combination alerts
+  - Out of scope this session — the dashboard visually highlights high
+    risk (coral nodes, pulled forward) but there's no proactive
+    alerting/notification mechanism (email, push, etc.).
 - [ ] Regional/institutional statistics view
-- [ ] Export investigation reports
+  - Out of scope — no region/institution field exists anywhere in the
+    reports data model, so there's nothing to break this down by yet.
+- [x] Export investigation reports
+  - GET /api/admin/export streams a CSV (date, risk_level, drug,
+    symptom, patient_tag columns; multi-value fields "; "-joined) —
+    admin-only, independently checked same as the dashboard route.
+    Verified the response is valid CSV with the real 4 test rows.
 - [ ] Manage users and datasets
 
 ## ML Pipeline (backend, no UI)
