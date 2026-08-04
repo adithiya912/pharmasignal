@@ -16,7 +16,15 @@ export default async function Home() {
             {user?.firstName ? `Case history — ${user.firstName}` : "Your case history"}
           </p>
         </div>
-        <UserButton />
+        <div className="flex items-center gap-4">
+          <a
+            href="/interactions"
+            className="rounded-md border border-hairline px-3 py-1.5 text-sm text-foreground/80 hover:bg-foreground/5"
+          >
+            Check an interaction
+          </a>
+          <UserButton />
+        </div>
       </header>
 
       <main className="mx-auto max-w-3xl px-6 pb-24 sm:px-8">

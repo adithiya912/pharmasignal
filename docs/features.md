@@ -52,11 +52,41 @@ any prompt: "build the next unchecked item under X".
     confirmed both via the rendered page and a direct GET /api/reports
     call. Both test patients and their test data deleted after
     verification.
-- [ ] Check drug interactions between 2+ medicines
-  - /predict-interaction is now wired into the report pipeline
-    (checked automatically per submitted report), but there's no
-    standalone "check any two drugs" patient-facing tool yet — that's
-    a distinct UI this item still refers to.
+- [x] Check drug interactions between 2+ medicines
+  - Standalone tool at /interactions (components/interaction-checker.tsx),
+    separate from report submission — a dropdown of the 9 drugs
+    currently seeded in Neo4j (ml-services/scripts/seed_graph.py's
+    DRUGS list; static in the UI, not read from Neo4j live, so it
+    needs a manual update if the seed graph ever changes), calling
+    /predict-interaction and /retrieve-evidence directly. Deliberately
+    skips /extract and /classify entirely — there's no free-text
+    report, just two drug names, so nothing to extract or classify.
+    Linked from the patient home page header ("Check an interaction").
+  - Renders interaction_predicted + evidence tier + supporting sources
+    via the same SignalLine/SignalNode primitives and the same Field
+    component (components/assessment-detail.tsx) the main risk result
+    uses — not rebuilt from scratch, though a new tone/badge/
+    explanation mapping was needed since there's no risk_level here
+    (this endpoint pair never touches /risk-score).
+  - Verified with 2 real pairs: warfarin+amoxicillin (direct graph
+    edge) correctly returned "major evidence interaction" with 5 real
+    PubMed/DrugBank/FDA sources. aspirin+fluconazole (no direct edge —
+    both connect only through warfarin) correctly returned "possible
+    interaction (model-inferred)" via the GNN's structural link
+    (aspirin → warfarin → fluconazole, confidence 0.60), with the same
+    honest "proof-of-concept, treat with caution" language used
+    elsewhere for GNN-only signals — not overstated as a confirmed
+    interaction.
+  - Known gap surfaced by this feature (pre-existing, not introduced
+    here): /retrieve-evidence's 17-entry corpus only covers ibuprofen/
+    metformin/warfarin/amoxicillin. For aspirin+fluconazole, the top-5
+    "Evidence" results returned are the closest corpus matches, not
+    literature actually about aspirin or fluconazole specifically —
+    visible in the aspirin+fluconazole test's evidence list. The report
+    flow rarely exposed this because its queries usually included at
+    least one of those 4 drugs; a standalone checker makes it easier to
+    pick a pair entirely outside the corpus. Same fix as the existing
+    RAG known-gap note below: needs a real ingestion pipeline.
 - [ ] Ask medicine-related questions (RAG-backed Q&A)
 - [x] Receive AI-generated risk summary per report
   - risk_level (low/medium/high) + plain-language explanation now
