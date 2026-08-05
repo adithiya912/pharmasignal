@@ -1,0 +1,25 @@
+# Render Blueprint for ml-services only — web/ deploys separately (Vercel).
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Usage: on render.com, New -> Blueprint -> connect this repo. Render
+# reads this file automatically. The 4 secrets below (sync: false) are
+# prompted for during that flow — never stored in this committed file.
+services:
+  - name: pharmasignal-ml
+    type: web
+    runtime: docker
+    plan: free
+    region: oregon
+    rootDir: ml-services
+    dockerfilePath: ./ml-services/Dockerfile
+    dockerContext: ./ml-services
+    healthCheckPath: /health
+    envVars:
+      - key: NEO4J_URI
+        sync: false
+      - key: NEO4J_USERNAME
+        sync: false
+      - key: NEO4J_PASSWORD
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

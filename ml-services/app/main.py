@@ -43,6 +43,14 @@ from app.schemas import (
 app = FastAPI(title="PharmaSignal ML Services")
 
 
+@app.get("/health")
+def health() -> dict:
+    # Deliberately shallow (no Neo4j/Gemini calls) — this backs Render's
+    # liveness probe, which needs a fast, always-responsive check that a
+    # transient external-API blip shouldn't flip to unhealthy.
+    return {"status": "ok"}
+
+
 @app.post("/extract", response_model=ExtractResponse)
 def extract(request: ExtractRequest) -> ExtractResponse:
     return extract_entities(request.report_text)
