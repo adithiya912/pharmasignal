@@ -1,4 +1,4 @@
-import type { PersistedReport, RiskLevel } from "@/lib/types";
+import type { ModelInfoResponse, PersistedReport, RiskLevel } from "@/lib/types";
 
 export interface DrugSignalLine {
   drug: string;
@@ -112,4 +112,30 @@ export async function clusterReports(reports: PersistedReport[]): Promise<Report
   }
   const data = await res.json();
   return data.clusters;
+}
+
+/**
+ * Calls the real GNN eval artifact via ml-services (see
+ * app/model_info.py — reads the actual last scripts/train_gnn.py run,
+ * never a hand-written number). Throws on failure so the admin AI
+ * Model Monitoring page can render an honest error state.
+ */
+export async function getModelInfo(): Promise<ModelInfoResponse> {
+  const res = await fetch(`${mlServiceUrl()}/model-info`, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`ml-services /model-info returned ${res.status}`);
+  }
+  return res.json();
+}
+
+/** Cheap reachability probe for the admin dashboard's platform-status
+ * card — /graph is served by ml-services and backed by Neo4j, so a
+ * successful response demonstrates both are up. */
+export async function isGraphReachable(): Promise<boolean> {
+  try {
+    const res = await fetch(`${mlServiceUrl()}/graph`, { cache: "no-store" });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }

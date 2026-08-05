@@ -40,3 +40,34 @@ export async function proxyToMlService(mlPath: string, payload: unknown): Promis
 
   return NextResponse.json(data);
 }
+
+/** GET counterpart to proxyToMlService — same auth/error-shape contract,
+ * for endpoints with no request body (e.g. GET /graph). */
+export async function proxyGetToMlService(mlPath: string): Promise<NextResponse> {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const mlServiceUrl = process.env.ML_SERVICE_URL ?? "http://127.0.0.1:8000";
+
+  let response: Response;
+  try {
+    response = await fetch(`${mlServiceUrl}${mlPath}`);
+  } catch {
+    return NextResponse.json(
+      { error: `Could not reach ml-services at ${mlServiceUrl}. Is it running?` },
+      { status: 502 },
+    );
+  }
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !data) {
+    return NextResponse.json(
+      { error: `ml-services ${mlPath} returned an error`, detail: data },
+      { status: response.status || 502 },
+    );
+  }
+
+  return NextResponse.json(data);
+}

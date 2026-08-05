@@ -87,7 +87,16 @@ any prompt: "build the next unchecked item under X".
     least one of those 4 drugs; a standalone checker makes it easier to
     pick a pair entirely outside the corpus. Same fix as the existing
     RAG known-gap note below: needs a real ingestion pipeline.
-- [ ] Ask medicine-related questions (RAG-backed Q&A)
+- [x] Ask medicine-related questions (RAG-backed Q&A)
+  - `POST /chat` (ml-services/app/chat.py): embeds the question, retrieves
+    from the same evidence corpus as /retrieve-evidence, and has Gemini
+    (`gemini-flash-latest`, free tier) answer strictly from the retrieved
+    excerpts — returns 503 with an honest "not configured" message if no
+    `GEMINI_API_KEY` is present, never a fabricated answer. Patient-facing
+    UI at /patient/assistant (src/components/patient/assistant-chat.tsx),
+    citing sources inline. Switched from Anthropic to Gemini for a
+    zero-cost API key (product decision, not a quality/capability call).
+    See docs/api-contracts.md.
 - [x] Receive AI-generated risk summary per report
   - risk_level (low/medium/high) + plain-language explanation now
     render as the primary result per report, color-coded per
@@ -234,6 +243,15 @@ any prompt: "build the next unchecked item under X".
     (no "Trend dashboard" text ever rendered) AND got 403 from GET
     /api/admin/export directly. All test accounts + data deleted after
     verification.
+  - **Rebuilt in the frontend redesign** (src/app/admin/page.tsx): same
+    real aggregates, now in the new dashboard shell — StatTile KPI row
+    (total reports, doctors/patients registered via Clerk, high-risk
+    count), a platform-status card (database, Neo4j reachability via a
+    live /graph probe, GNN held-out accuracy), recent activity, and a
+    top-drugs bar. The old SignalLine-per-drug layout and this page's
+    /admin route are gone; still no fabricated numbers — every figure
+    traces to listAllReportsForAdmin(), listUsersForAdmin(), or a live
+    ml-services call.
 - [ ] High-risk drug combination alerts
   - Out of scope this session — the dashboard visually highlights high
     risk (coral nodes, pulled forward) but there's no proactive
@@ -246,7 +264,23 @@ any prompt: "build the next unchecked item under X".
     symptom, patient_tag columns; multi-value fields "; "-joined) —
     admin-only, independently checked same as the dashboard route.
     Verified the response is valid CSV with the real 4 test rows.
-- [ ] Manage users and datasets
+  - Now surfaced as an "Export CSV" action on /admin/reports, alongside
+    a read-only, searchable table of every report (reuses the doctor
+    portal's ReportsTable component in its non-linking mode — no
+    per-report admin detail page exists, so rows aren't clickable there).
+- [x] Manage users and datasets
+  - User management: /admin/users lists every Clerk user (email, role,
+    join date, last sign-in) and lets an admin change any user's role
+    via a Select bound to `PATCH /api/admin/users/[id]/role` — a
+    separate, admin-gated route from the self-service
+    /api/onboarding/set-role (which intentionally only ever accepts the
+    caller's own user id, to prevent privilege escalation). Verified
+    end-to-end: an admin test account changed a second test account's
+    role from none to "doctor" and the change round-tripped through a
+    real PATCH request (200, Clerk metadata updated).
+  - "Datasets" doesn't apply yet — there's no dataset entity in this
+    data model (reports are the only persisted collection, already
+    covered by the reports page above).
 
 ## ML Pipeline (backend, no UI)
 - [ ] BioBERT text embedding on patient report
@@ -327,6 +361,14 @@ any prompt: "build the next unchecked item under X".
     statistical power, and proper calibration. None of that exists
     yet — this is the scaffolding for that future work, not a
     substitute for it.
+  - Now surfaced to admins (not just this file): scripts/train_gnn.py
+    writes its Phase 1 eval numbers to app/gnn_artifacts/eval_report.json
+    each run; `GET /model-info` reads that artifact (never a hand-
+    written number) and the redesigned admin/model page renders it —
+    architecture, graph size, the same 2/6 held-out accuracy, and the
+    caveat text above, verbatim, as a visible warning banner rather
+    than a footnote. Returns `{"trained": false}` on a fresh checkout
+    that hasn't run the training script yet.
   - Operational caveat: the GNN's embeddings are a frozen snapshot
     from the last scripts/train_gnn.py run. Adding drugs to Neo4j via
     scripts/seed_graph.py does NOT update predictions for those drugs

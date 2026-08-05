@@ -16,7 +16,7 @@ standard admin-dashboard grid layout, follow the brief exactly.
 - Backend: FastAPI (ML services), Node/Express (app API) — see ml-services/ vs web/
 - DB: Supabase (relational), Neo4j Aura (drug interaction graph)
 - Auth: Clerk
-- AI: Anthropic + BioBERT (local) + custom GNN
+- AI: Google Gemini (chat) + BioBERT (local) + custom GNN
 - Storage: Cloudflare R2
 
 ## Rules

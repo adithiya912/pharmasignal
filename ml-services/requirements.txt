@@ -8,3 +8,5 @@ sentence-transformers
 numpy
 neo4j
 torch-geometric
+google-genai
+python-dotenv

@@ -1,11 +1,15 @@
 import { redirect } from "next/navigation";
-import { isCurrentUserAdmin } from "@/lib/roles";
+import { getCurrentUserRole, roleHomePath } from "@/lib/roles";
+import { AppShell } from "@/components/shell/app-shell";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const authorized = await isCurrentUserAdmin();
-  if (!authorized) {
-    redirect("/");
-  }
+  const role = await getCurrentUserRole();
+  if (role === null) redirect("/onboarding/role");
+  if (role !== "admin") redirect(roleHomePath(role));
 
-  return <>{children}</>;
+  return (
+    <AppShell portalLabel="Administrator" role="admin">
+      {children}
+    </AppShell>
+  );
 }

@@ -1,0 +1,58 @@
+{
+  "trained_at": "2026-08-04T13:23:48.534833+00:00",
+  "architecture": "2-layer GCN (PyTorch Geometric GCNConv) over a learned node-embedding table, dot-product link-prediction decoder. No molecular/chemical features \u2014 the model only has graph structure + edge evidence weight.",
+  "graph_nodes": 9,
+  "graph_edges": 9,
+  "held_out_eval": {
+    "test_size": 6,
+    "correct": 2,
+    "accuracy": 0.333,
+    "best_epoch": 9,
+    "best_val_loss": 0.8798,
+    "predictions": [
+      {
+        "drug_a": "omeprazole",
+        "drug_b": "warfarin",
+        "probability": 0.28,
+        "true_label": "interaction",
+        "predicted_correctly": false
+      },
+      {
+        "drug_a": "fluconazole",
+        "drug_b": "warfarin",
+        "probability": 0.511,
+        "true_label": "interaction",
+        "predicted_correctly": true
+      },
+      {
+        "drug_a": "ciprofloxacin",
+        "drug_b": "omeprazole",
+        "probability": 0.616,
+        "true_label": "non-interaction",
+        "predicted_correctly": false
+      },
+      {
+        "drug_a": "aspirin",
+        "drug_b": "fluconazole",
+        "probability": 0.508,
+        "true_label": "non-interaction",
+        "predicted_correctly": false
+      },
+      {
+        "drug_a": "amoxicillin",
+        "drug_b": "ibuprofen",
+        "probability": 0.184,
+        "true_label": "non-interaction",
+        "predicted_correctly": true
+      },
+      {
+        "drug_a": "aspirin",
+        "drug_b": "sulfamethoxazole-trimethoprim",
+        "probability": 0.769,
+        "true_label": "non-interaction",
+        "predicted_correctly": false
+      }
+    ]
+  },
+  "caveat": "Trained on a 9-node/9-edge proof-of-concept graph \u2014 far too small to teach real pharmacology. The held-out accuracy above is not statistically meaningful at this sample size (n=6); it demonstrates the model has NOT learned to discriminate real interactions from non-interactions yet. Confidence scores also do not preserve major/moderate/weak evidence tiers even on edges seen during training, which is why /predict-interaction looks evidence up directly from Neo4j rather than deriving it from this model's output."
+}

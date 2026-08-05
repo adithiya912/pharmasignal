@@ -1,5 +1,24 @@
 import { currentUser } from "@clerk/nextjs/server";
 
+export type UserRole = "patient" | "doctor" | "admin";
+
+const ROLES: UserRole[] = ["patient", "doctor", "admin"];
+
+/**
+ * Reads the self-service role set by /api/onboarding/set-role. Returns
+ * null for a signed-in user who hasn't picked a role yet (redirect them
+ * to /onboarding/role) as well as for a signed-out user.
+ */
+export async function getCurrentUserRole(): Promise<UserRole | null> {
+  const user = await currentUser();
+  const role = user?.publicMetadata?.role;
+  return ROLES.includes(role as UserRole) ? (role as UserRole) : null;
+}
+
+export function roleHomePath(role: UserRole): string {
+  return `/${role}`;
+}
+
 /**
  * v0 role check: a `role` field in Clerk's publicMetadata, set
  * manually per-user (Clerk dashboard -> Users -> select user -> Public

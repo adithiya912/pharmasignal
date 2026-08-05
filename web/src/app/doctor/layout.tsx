@@ -1,11 +1,15 @@
 import { redirect } from "next/navigation";
-import { isCurrentUserDoctor } from "@/lib/roles";
+import { getCurrentUserRole, roleHomePath } from "@/lib/roles";
+import { AppShell } from "@/components/shell/app-shell";
 
 export default async function DoctorLayout({ children }: { children: React.ReactNode }) {
-  const authorized = await isCurrentUserDoctor();
-  if (!authorized) {
-    redirect("/");
-  }
+  const role = await getCurrentUserRole();
+  if (role === null) redirect("/onboarding/role");
+  if (role !== "doctor") redirect(roleHomePath(role));
 
-  return <>{children}</>;
+  return (
+    <AppShell portalLabel="Doctor" role="doctor">
+      {children}
+    </AppShell>
+  );
 }

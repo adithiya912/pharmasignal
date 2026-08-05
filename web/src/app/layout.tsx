@@ -1,29 +1,17 @@
 import type { Metadata } from "next";
-import { Newsreader, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import { ClerkProvider } from "@clerk/nextjs";
+import { ThemeProvider } from "@/components/theme-provider";
+import { QueryProvider } from "@/components/query-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const newsreader = Newsreader({
-  variable: "--font-display",
-  subsets: ["latin"],
-  style: ["normal", "italic"],
-});
-
-const ibmPlexSans = IBM_Plex_Sans({
-  variable: "--font-body",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-});
-
-const ibmPlexMono = IBM_Plex_Mono({
-  variable: "--font-data",
-  subsets: ["latin"],
-  weight: ["400", "500"],
-});
-
 export const metadata: Metadata = {
-  title: "PharmaSignal — Report a side effect",
-  description: "Patient adverse-event reporting for PharmaSignal.",
+  title: "PharmaSignal — AI-powered pharmacovigilance",
+  description:
+    "Patients report side effects, AI extracts entities and predicts drug interactions, and doctors and regulators get explainable, evidence-backed risk scores.",
 };
 
 export default function RootLayout({
@@ -35,10 +23,24 @@ export default function RootLayout({
     <ClerkProvider>
       <html
         lang="en"
-        className={`${newsreader.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} h-full antialiased`}
+        suppressHydrationWarning
+        className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
+        style={
+          {
+            "--font-body": "var(--font-geist-sans)",
+            "--font-data": "var(--font-geist-mono)",
+          } as React.CSSProperties
+        }
       >
         <body className="min-h-full flex flex-col bg-background text-foreground font-body">
-          {children}
+          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
+            <QueryProvider>
+              <TooltipProvider>
+                {children}
+                <Toaster />
+              </TooltipProvider>
+            </QueryProvider>
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

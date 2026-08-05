@@ -24,6 +24,7 @@ import copy
 import json
 import random
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import torch
@@ -176,11 +177,21 @@ def main() -> None:
     id_to_name = {i: name for name, i in node_index.items()}
     print("\nHeld-out test predictions (graph never saw these edges during training):")
     correct = 0
+    eval_predictions = []
     for (a, b), label, prob in zip(test_pairs, test_labels, test_probs):
         predicted = 1 if prob >= 0.5 else 0
         correct += predicted == label
         tag = "true interaction" if label == 1 else "true non-interaction"
         print(f"  {id_to_name[a]:>28s} <-> {id_to_name[b]:<28s}  prob={prob:.3f}  ({tag})")
+        eval_predictions.append(
+            {
+                "drug_a": id_to_name[a],
+                "drug_b": id_to_name[b],
+                "probability": round(prob, 3),
+                "true_label": tag.replace("true ", ""),
+                "predicted_correctly": bool(predicted == label),
+            }
+        )
     print(f"Held-out accuracy: {correct}/{len(test_labels)} — with n={len(test_labels)} this is NOT a")
     print("statistically meaningful generalization estimate, only a methodology sanity check.")
 
@@ -212,6 +223,41 @@ def main() -> None:
     with open(ARTIFACT_DIR / "node_index.json", "w") as f:
         json.dump({"nodes": nodes, "node_index": node_index}, f, indent=2)
     print(f"\nSaved node embeddings + index to {ARTIFACT_DIR}")
+
+    # Recorded output of THIS run, not a hand-written number — read by
+    # GET /model-info so the admin "AI Model Monitoring" page reports
+    # the actual last training run instead of a hardcoded figure.
+    eval_report = {
+        "trained_at": datetime.now(timezone.utc).isoformat(),
+        "architecture": (
+            "2-layer GCN (PyTorch Geometric GCNConv) over a learned node-embedding "
+            "table, dot-product link-prediction decoder. No molecular/chemical "
+            "features — the model only has graph structure + edge evidence weight."
+        ),
+        "graph_nodes": n,
+        "graph_edges": len(positive_pairs),
+        "held_out_eval": {
+            "test_size": len(test_labels),
+            "correct": correct,
+            "accuracy": round(correct / len(test_labels), 3),
+            "best_epoch": best_epoch,
+            "best_val_loss": round(best_val_loss, 4),
+            "predictions": eval_predictions,
+        },
+        "caveat": (
+            "Trained on a 9-node/9-edge proof-of-concept graph — far too small to "
+            "teach real pharmacology. The held-out accuracy above is not "
+            "statistically meaningful at this sample size (n=6); it demonstrates "
+            "the model has NOT learned to discriminate real interactions from "
+            "non-interactions yet. Confidence scores also do not preserve "
+            "major/moderate/weak evidence tiers even on edges seen during "
+            "training, which is why /predict-interaction looks evidence up "
+            "directly from Neo4j rather than deriving it from this model's output."
+        ),
+    }
+    with open(ARTIFACT_DIR / "eval_report.json", "w") as f:
+        json.dump(eval_report, f, indent=2)
+    print(f"Saved eval report to {ARTIFACT_DIR / 'eval_report.json'}")
 
     # ---- Report predictions on the requested test pairs using the final model ----
     print("\n=== Final-model predictions on requested test pairs ===")

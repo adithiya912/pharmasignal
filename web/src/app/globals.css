@@ -9,16 +9,27 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-body);
   --font-body: var(--font-body);
-  --font-display: var(--font-display);
+  --font-display: var(--font-body);
   --font-mono: var(--font-data);
-  --font-heading: var(--font-display);
-  --color-navy: var(--navy);
-  --color-parchment: var(--parchment);
-  --color-parchment-foreground: var(--parchment-foreground);
-  --color-signal-sage: var(--signal-sage);
-  --color-signal-amber: var(--signal-amber);
-  --color-signal-coral: var(--signal-coral);
+  --font-heading: var(--font-body);
+  --color-brand-start: var(--brand-start);
+  --color-brand-end: var(--brand-end);
+  --color-risk-low: var(--risk-low);
+  --color-risk-medium: var(--risk-medium);
+  --color-risk-high: var(--risk-high);
+  --color-glass: var(--glass);
+  --color-glass-border: var(--glass-border);
   --color-hairline: var(--hairline);
+  /* Legacy Revision-1 tokens — kept only so pages not yet migrated to the
+     new design system (doctor/admin/interactions/report-form, moved in
+     Modules 4/6/7) don't render unstyled in the meantime. Remove once
+     nothing references bg-navy/bg-parchment/signal-* anymore. */
+  --color-navy: var(--legacy-navy);
+  --color-parchment: var(--legacy-parchment);
+  --color-parchment-foreground: var(--legacy-parchment-foreground);
+  --color-signal-sage: var(--risk-low);
+  --color-signal-amber: var(--risk-medium);
+  --color-signal-coral: var(--risk-high);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -58,81 +69,132 @@
 }
 
 :root {
-  /* PharmaSignal design-brief palette — one fixed look, not a light/dark toggle */
-  --navy: #0e1b2a;
-  --parchment: #f6f1e7;
-  --parchment-foreground: #241f18;
-  --signal-sage: #7a9b76;
-  --signal-amber: #e8a33d;
-  --signal-coral: #d46a6a;
-  --hairline: oklch(1 0 0 / 12%);
+  /* Legacy Revision-1 literals (not theme-aware — retiring, not restyling) */
+  --legacy-navy: #0e1b2a;
+  --legacy-parchment: #f6f1e7;
+  --legacy-parchment-foreground: #241f18;
 
-  --background: var(--navy);
-  --foreground: #e7ecf1;
-  --card: var(--parchment);
-  --card-foreground: var(--parchment-foreground);
-  --popover: var(--parchment);
-  --popover-foreground: var(--parchment-foreground);
-  --primary: var(--signal-sage);
-  --primary-foreground: #10210f;
+  /* PharmaSignal design-brief.md Revision 2 — dark is default, light fully supported */
+  --brand-start: oklch(0.6 0.19 280);
+  --brand-end: oklch(0.65 0.18 255);
+  --risk-low: oklch(0.72 0.13 150);
+  --risk-medium: oklch(0.78 0.15 75);
+  --risk-high: oklch(0.65 0.2 25);
+  --hairline: oklch(1 0 0 / 10%);
+  --glass: oklch(0.22 0.02 260 / 60%);
+  --glass-border: oklch(1 0 0 / 10%);
+
+  --background: oklch(0.16 0.02 260);
+  --foreground: oklch(0.96 0.005 260);
+  --card: oklch(0.2 0.02 260);
+  --card-foreground: oklch(0.96 0.005 260);
+  --popover: oklch(0.2 0.02 260);
+  --popover-foreground: oklch(0.96 0.005 260);
+  --primary: var(--brand-start);
+  --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(1 0 0 / 8%);
-  --secondary-foreground: #e7ecf1;
+  --secondary-foreground: oklch(0.96 0.005 260);
   --muted: oklch(1 0 0 / 6%);
-  --muted-foreground: #a9b6c2;
-  --accent: var(--signal-amber);
-  --accent-foreground: #241503;
-  --destructive: var(--signal-coral);
+  --muted-foreground: oklch(0.68 0.02 260);
+  --accent: oklch(1 0 0 / 8%);
+  --accent-foreground: oklch(0.96 0.005 260);
+  --destructive: var(--risk-high);
   --border: var(--hairline);
   --input: oklch(1 0 0 / 14%);
-  --ring: var(--signal-sage);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --ring: var(--brand-start);
+  --chart-1: var(--brand-start);
+  --chart-2: var(--brand-end);
+  --chart-3: var(--risk-low);
+  --chart-4: var(--risk-medium);
+  --chart-5: var(--risk-high);
+  --radius: 0.75rem;
+  --sidebar: oklch(0.14 0.02 260);
+  --sidebar-foreground: oklch(0.94 0.005 260);
+  --sidebar-primary: var(--brand-start);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(1 0 0 / 6%);
+  --sidebar-accent-foreground: oklch(0.96 0.005 260);
+  --sidebar-border: var(--hairline);
+  --sidebar-ring: var(--brand-start);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: oklch(0.16 0.02 260);
+  --foreground: oklch(0.96 0.005 260);
+  --card: oklch(0.2 0.02 260);
+  --card-foreground: oklch(0.96 0.005 260);
+  --popover: oklch(0.2 0.02 260);
+  --popover-foreground: oklch(0.96 0.005 260);
+  --primary: var(--brand-start);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(1 0 0 / 8%);
+  --secondary-foreground: oklch(0.96 0.005 260);
+  --muted: oklch(1 0 0 / 6%);
+  --muted-foreground: oklch(0.68 0.02 260);
+  --accent: oklch(1 0 0 / 8%);
+  --accent-foreground: oklch(0.96 0.005 260);
+  --destructive: var(--risk-high);
+  --border: var(--hairline);
+  --input: oklch(1 0 0 / 14%);
+  --ring: var(--brand-start);
+  --glass: oklch(0.22 0.02 260 / 60%);
+  --glass-border: oklch(1 0 0 / 10%);
+  --chart-1: var(--brand-start);
+  --chart-2: var(--brand-end);
+  --chart-3: var(--risk-low);
+  --chart-4: var(--risk-medium);
+  --chart-5: var(--risk-high);
+  --sidebar: oklch(0.14 0.02 260);
+  --sidebar-foreground: oklch(0.94 0.005 260);
+  --sidebar-primary: var(--brand-start);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(1 0 0 / 6%);
+  --sidebar-accent-foreground: oklch(0.96 0.005 260);
+  --sidebar-border: var(--hairline);
+  --sidebar-ring: var(--brand-start);
+}
+
+.light {
+  --brand-start: oklch(0.55 0.19 280);
+  --brand-end: oklch(0.58 0.18 255);
+  --risk-low: oklch(0.6 0.13 150);
+  --risk-medium: oklch(0.68 0.16 75);
+  --risk-high: oklch(0.58 0.21 25);
+  --hairline: oklch(0 0 0 / 8%);
+  --glass: oklch(1 0 0 / 70%);
+  --glass-border: oklch(0 0 0 / 8%);
+
+  --background: oklch(0.98 0.005 260);
+  --foreground: oklch(0.2 0.02 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.02 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.02 260);
+  --primary: var(--brand-start);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0 0 0 / 5%);
+  --secondary-foreground: oklch(0.2 0.02 260);
+  --muted: oklch(0 0 0 / 4%);
+  --muted-foreground: oklch(0.45 0.02 260);
+  --accent: oklch(0 0 0 / 5%);
+  --accent-foreground: oklch(0.2 0.02 260);
+  --destructive: var(--risk-high);
+  --border: var(--hairline);
+  --input: oklch(0 0 0 / 10%);
+  --ring: var(--brand-start);
+  --chart-1: var(--brand-start);
+  --chart-2: var(--brand-end);
+  --chart-3: var(--risk-low);
+  --chart-4: var(--risk-medium);
+  --chart-5: var(--risk-high);
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.2 0.02 260);
+  --sidebar-primary: var(--brand-start);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0 0 0 / 4%);
+  --sidebar-accent-foreground: oklch(0.2 0.02 260);
+  --sidebar-border: var(--hairline);
+  --sidebar-ring: var(--brand-start);
 }
 
 @layer base {
@@ -147,9 +209,31 @@
   }
 }
 
-/* The one deliberate motion moment from design-brief.md: the line
-   reacts once when a risk signal is detected, then settles. Not a
-   loop — animation-iteration-count is implicitly 1. */
+@layer utilities {
+  /* Shared glass-panel treatment referenced throughout docs/design-brief.md
+     Revision 2 — one utility, reused by GlassCard rather than re-declared
+     per component. */
+  .glass-panel {
+    background-color: var(--glass);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .brand-gradient-text {
+    background-image: linear-gradient(135deg, var(--brand-start), var(--brand-end));
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+
+  .brand-gradient-bg {
+    background-image: linear-gradient(135deg, var(--brand-start), var(--brand-end));
+  }
+}
+
+/* Legacy Revision-1 animation, used by components/signal-line.tsx — kept
+   until Modules 4/6/7 replace its callers. */
 @keyframes signal-pulse {
   0% {
     transform: scale(1);
@@ -163,4 +247,15 @@
 
 .animate-signal-pulse {
   animation: signal-pulse 1.2s cubic-bezier(0.2, 0.6, 0.4, 1) 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

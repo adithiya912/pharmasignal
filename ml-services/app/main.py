@@ -1,13 +1,18 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 
+from app.chat import ChatNotConfigured, answer_question
 from app.classify import classify_report
 from app.cluster import cluster_reports
 from app.embeddings import embed_text
 from app.evidence import retrieve_evidence
+from app.graph import get_full_graph
+from app.model_info import get_model_eval
 from app.ner_extraction import extract_entities
 from app.predict_interaction import predict_interaction
 from app.risk_score import compute_risk_score
 from app.schemas import (
+    ChatRequest,
+    ChatResponse,
     ClassifyRequest,
     ClassifyResponse,
     ClusterInfo,
@@ -20,6 +25,10 @@ from app.schemas import (
     EvidenceSource,
     ExtractRequest,
     ExtractResponse,
+    GraphEdge,
+    GraphNode,
+    GraphResponse,
+    ModelInfoResponse,
     PredictInteractionRequest,
     PredictInteractionResponse,
     RiskScoreRequest,
@@ -80,3 +89,29 @@ def risk_score_endpoint(request: RiskScoreRequest) -> RiskScoreResponse:
         contributing_reports=contributing_reports,
         contributing_sources=contributing_sources,
     )
+
+
+@app.post("/chat", response_model=ChatResponse)
+def chat_endpoint(request: ChatRequest) -> ChatResponse:
+    history = [{"role": m.role, "content": m.content} for m in request.history]
+    try:
+        answer, sources = answer_question(request.message, history)
+    except ChatNotConfigured as exc:
+        raise HTTPException(
+            status_code=503, detail="AI assistant is not configured (no Gemini API credentials)."
+        ) from exc
+    return ChatResponse(answer=answer, sources=[EvidenceSource(**s) for s in sources])
+
+
+@app.get("/graph", response_model=GraphResponse)
+def graph_endpoint() -> GraphResponse:
+    nodes, edges = get_full_graph()
+    return GraphResponse(
+        nodes=[GraphNode(**n) for n in nodes],
+        edges=[GraphEdge(**e) for e in edges],
+    )
+
+
+@app.get("/model-info", response_model=ModelInfoResponse)
+def model_info_endpoint() -> ModelInfoResponse:
+    return ModelInfoResponse(**get_model_eval())
