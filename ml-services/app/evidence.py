@@ -1,4 +1,6 @@
+import json
 from functools import lru_cache
+from pathlib import Path
 
 import numpy as np
 
@@ -205,6 +207,23 @@ EVIDENCE_CORPUS: list[dict] = [
         ),
     },
 ]
+
+_INGESTED_CORPUS_PATH = Path(__file__).resolve().parent / "evidence_corpus_ingested.json"
+
+
+def _load_ingested_corpus() -> list[dict]:
+    """Real PubMed/openFDA entries from scripts/ingest_evidence.py, if
+    that script has been run — same honest empty-if-absent pattern as
+    app/model_info.py's GNN eval artifact. Never replaces the hand-written
+    entries above, only adds to them."""
+    if not _INGESTED_CORPUS_PATH.exists():
+        return []
+    with open(_INGESTED_CORPUS_PATH, encoding="utf-8") as f:
+        return json.load(f)
+
+
+_existing_urls = {e["url"] for e in EVIDENCE_CORPUS}
+EVIDENCE_CORPUS.extend(e for e in _load_ingested_corpus() if e["url"] not in _existing_urls)
 
 
 def _cosine(a: np.ndarray, b: np.ndarray) -> float:

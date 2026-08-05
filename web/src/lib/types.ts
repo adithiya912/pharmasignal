@@ -36,6 +36,20 @@ export interface EvidenceResponse {
   sources: EvidenceSource[];
 }
 
+export interface ReferenceSite {
+  name: string;
+  url: string;
+}
+
+/** General, unverified AI answer for a drug pair with no graph/GNN data —
+ * distinct from EvidenceResponse's per-claim citations. reference_sites is
+ * a fixed list of real, stable general-reference sites, not per-answer
+ * citations (see ml-services/app/general_info.py for why). */
+export interface GeneralInfoResponse {
+  answer: string;
+  reference_sites: ReferenceSite[];
+}
+
 export type RiskLevel = "low" | "medium" | "high";
 
 export interface RiskScoreResponse {

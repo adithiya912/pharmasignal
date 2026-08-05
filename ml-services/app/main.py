@@ -1,10 +1,12 @@
 from fastapi import FastAPI, HTTPException
 
-from app.chat import ChatNotConfigured, answer_question
+from app.chat import answer_question
 from app.classify import classify_report
 from app.cluster import cluster_reports
 from app.embeddings import embed_text
 from app.evidence import retrieve_evidence
+from app.gemini_client import ChatNotConfigured
+from app.general_info import general_drug_pair_info
 from app.graph import get_full_graph
 from app.model_info import get_model_eval
 from app.ner_extraction import extract_entities
@@ -25,12 +27,15 @@ from app.schemas import (
     EvidenceSource,
     ExtractRequest,
     ExtractResponse,
+    GeneralInfoRequest,
+    GeneralInfoResponse,
     GraphEdge,
     GraphNode,
     GraphResponse,
     ModelInfoResponse,
     PredictInteractionRequest,
     PredictInteractionResponse,
+    ReferenceSite,
     RiskScoreRequest,
     RiskScoreResponse,
 )
@@ -101,6 +106,17 @@ def chat_endpoint(request: ChatRequest) -> ChatResponse:
             status_code=503, detail="AI assistant is not configured (no Gemini API credentials)."
         ) from exc
     return ChatResponse(answer=answer, sources=[EvidenceSource(**s) for s in sources])
+
+
+@app.post("/general-drug-info", response_model=GeneralInfoResponse)
+def general_drug_info_endpoint(request: GeneralInfoRequest) -> GeneralInfoResponse:
+    try:
+        answer, reference_sites = general_drug_pair_info(request.drug_a, request.drug_b)
+    except ChatNotConfigured as exc:
+        raise HTTPException(
+            status_code=503, detail="AI assistant is not configured (no Gemini API credentials)."
+        ) from exc
+    return GeneralInfoResponse(answer=answer, reference_sites=[ReferenceSite(**r) for r in reference_sites])
 
 
 @app.get("/graph", response_model=GraphResponse)

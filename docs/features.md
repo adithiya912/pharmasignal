@@ -87,6 +87,18 @@ any prompt: "build the next unchecked item under X".
     least one of those 4 drugs; a standalone checker makes it easier to
     pick a pair entirely outside the corpus. Same fix as the existing
     RAG known-gap note below: needs a real ingestion pipeline.
+  - **Gap closed**: previously, a pair with no graph edge AND no GNN
+    signal (`evidence: null`, `interaction_predicted: false`) just
+    rendered "no known interaction" and stopped there. `POST
+    /general-drug-info` (ml-services/app/general_info.py) now fires
+    automatically in that specific case, asking Gemini for a general,
+    explicitly-unverified answer plus a fixed list of real reference
+    sites (Drugs.com, MedlinePlus, FDA DailyMed) to check independently.
+    Rendered in its own clearly-labeled "General AI overview" panel,
+    never merged into or presented as the verified graph result above
+    it. See docs/api-contracts.md for why this doesn't use live Google
+    Search grounding (tested directly: 429 on the free tier) or claim
+    per-answer citations.
 - [x] Ask medicine-related questions (RAG-backed Q&A)
   - `POST /chat` (ml-services/app/chat.py): embeds the question, retrieves
     from the same evidence corpus as /retrieve-evidence, and has Gemini
@@ -390,10 +402,51 @@ any prompt: "build the next unchecked item under X".
     stale (404); the 4 "FDA" entries instead link to DailyMed, NIH's
     official public mirror of the same FDA-approved label content,
     under stable URLs that were confirmed live.
-  - Known gap: this is a 17-entry corpus covering only the 4 drugs in
-    our test data — needs a real ingestion pipeline (PubMed/DrugBank/
-    FDA API or bulk download) before this generalizes to arbitrary
-    drugs/symptoms.
+  - **Gap substantially closed**: `scripts/ingest_evidence.py` pulls real
+    additional entries from two free, official APIs — PubMed (NCBI
+    E-utilities `esearch`/`efetch`, real article titles + abstracts by
+    PMID) and openFDA (`/drug/label.json`'s structured
+    `drug_interactions`/`warnings`/`adverse_reactions` fields, with the
+    label's `spl_set_id` used to build the same DailyMed URL format the
+    hand-written FDA entries already use). Run for real during
+    development: 74 total corpus entries now (17 hand-written + 57
+    ingested: 49 PubMed, 21 FDA, 4 DrugBank), covering all 9 seeded
+    drugs instead of 4. Verified end-to-end: `/retrieve-evidence` for
+    "aspirin fluconazole" — previously the textbook example of this
+    gap, since neither drug was in the original 4 — now returns
+    genuinely relevant FDA/PubMed fluconazole and aspirin results
+    instead of closest-available fallback matches.
+  - Writes to `app/evidence_corpus_ingested.json`
+    (`scripts/ingest_evidence.py` → `app/evidence.py`, same
+    write-artifact/read-artifact pattern as `train_gnn.py` →
+    `app/gnn_artifacts/eval_report.json`). Additive only — the original
+    17 hand-written entries are untouched; the script is idempotent
+    (skips URLs already present) and the artifact being absent falls
+    back to exactly today's 17-entry behavior, verified directly.
+  - Explicit scope boundaries, not oversights: **no new DrugBank
+    entries** — their terms of service prohibit scraping, real access
+    needs a paid API license this project doesn't have; **no changes to
+    the Neo4j interaction graph** (`scripts/seed_graph.py` stays
+    hand-curated only — classifying "does this abstract describe an
+    interaction between A and B" well enough to trust would be its own
+    project, and CLAUDE.md's rule is never to fabricate interaction
+    data); **batch/offline only**, not a live per-request fetch —
+    `/retrieve-evidence` and `/chat` keep today's fast, in-memory,
+    no-external-dependency runtime, only the corpus they search grew.
+  - Known ingestion-precision gap, caught and partially fixed during
+    development: a bare keyword search (e.g. "aspirin AND adverse
+    event") can match a paper that only name-drops a drug in passing
+    (found directly: a protein-crystallography paper using warfarin and
+    ibuprofen purely as textbook albumin-binding-site markers). Fixed
+    with PubMed's `[tiab]` field restriction (disables loose MeSH-based
+    query expansion) plus a title/abstract keyword guard, and one
+    specific PMID excluded by hand after reading the full abstract —
+    documented as `EXCLUDED_PMIDS` in the script rather than silently
+    dropped. Residual imprecision of this kind is inherent to
+    keyword-based literature search generally; the embedding-similarity
+    top-K retrieval already limits its practical impact, since an
+    off-topic entry is unlikely to be the closest match to any real
+    query.
 - [x] Risk scoring: fuse report + GNN + evidence into Low/Medium/High
   with explanation
   - Rule-based v0 (app/risk_score.py), not a trained fusion model.

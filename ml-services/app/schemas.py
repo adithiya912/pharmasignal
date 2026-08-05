@@ -156,6 +156,21 @@ class ModelHeldOutEval(BaseModel):
     predictions: list[ModelEvalPrediction]
 
 
+class GeneralInfoRequest(BaseModel):
+    drug_a: str
+    drug_b: str
+
+
+class ReferenceSite(BaseModel):
+    name: str
+    url: str
+
+
+class GeneralInfoResponse(BaseModel):
+    answer: str
+    reference_sites: list[ReferenceSite]
+
+
 class ModelInfoResponse(BaseModel):
     trained: bool
     trained_at: str | None = None

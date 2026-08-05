@@ -1,11 +1,7 @@
-import os
-from functools import lru_cache
-
-from google import genai
 from google.genai import types
 
-from app.config import settings  # noqa: F401  (triggers .env loading — see config.py)
 from app.evidence import retrieve_evidence
+from app.gemini_client import MODEL, ChatNotConfigured, get_gemini_client
 
 # Per docs/api-contracts.md's non-negotiable rule ("no endpoint returns a
 # bare score with nothing backing it"), this endpoint retrieves real
@@ -13,7 +9,6 @@ from app.evidence import retrieve_evidence
 # Gemini to synthesize an answer ONLY from that evidence — never from
 # unaided model knowledge. See CLAUDE.md: "NEVER fabricate drug
 # interaction data or risk scores."
-MODEL = "gemini-flash-latest"
 
 SYSTEM_PROMPT = (
     "You are PharmaSignal's medicine information assistant. Answer the "
@@ -27,24 +22,6 @@ SYSTEM_PROMPT = (
     "handful of drugs (ibuprofen, metformin, warfarin, amoxicillin, and a "
     "few others) — say so plainly if the question falls outside it."
 )
-
-
-class ChatNotConfigured(RuntimeError):
-    """Raised when no Gemini credentials are available — the caller
-    returns an honest 503 instead of a fabricated answer."""
-
-
-@lru_cache(maxsize=1)
-def _get_client() -> genai.Client:
-    # Checked explicitly (rather than letting the SDK fail lazily on the
-    # first request) so a missing key always surfaces as this specific,
-    # honest error — no dependence on the SDK's own error shape for a
-    # bad/absent key, which the anthropic SDK's own history here showed
-    # can't be assumed without direct verification.
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise ChatNotConfigured("No GEMINI_API_KEY found in environment.")
-    return genai.Client(api_key=api_key)
 
 
 def _to_gemini_history(history: list[dict]) -> list[types.Content]:
@@ -70,7 +47,7 @@ def answer_question(message: str, history: list[dict]) -> tuple[str, list[dict]]
         or "No matching evidence was found in the corpus for this question."
     )
 
-    client = _get_client()  # raises ChatNotConfigured before any network call if unset
+    client = get_gemini_client()  # raises ChatNotConfigured before any network call if unset
 
     contents = _to_gemini_history(history) + [
         types.Content(
@@ -84,7 +61,10 @@ def answer_question(message: str, history: list[dict]) -> tuple[str, list[dict]]
         contents=contents,
         config=types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
-            max_output_tokens=1024,
+            # See app/general_info.py for why this is 2048, not a smaller
+            # number: gemini-flash-latest's invisible "thinking" tokens
+            # share this same budget with the visible answer.
+            max_output_tokens=2048,
         ),
     )
 

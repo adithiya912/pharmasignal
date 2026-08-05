@@ -111,6 +111,16 @@ Output:
   ]
 }
 ```
+Request/response shape is unchanged. The corpus it searches now has two
+sources: `app/evidence.py`'s hand-written `EVIDENCE_CORPUS` (17 entries,
+unchanged) plus `app/evidence_corpus_ingested.json` if present — a real,
+script-fetched artifact from `scripts/ingest_evidence.py` (PubMed
+E-utilities + openFDA, both free official APIs), merged in additively and
+deduped by URL. Absent artifact = the original 17-entry-only behavior. See
+docs/features.md's RAG section for what's ingested, what's explicitly out
+of scope (no DrugBank — ToS; no graph changes), and the precision guard
+this script applies. Purely a corpus-size change — no live/per-request
+external calls were added to this endpoint.
 
 ## POST /risk-score
 Input:
@@ -165,6 +175,48 @@ message (not a fabricated answer) when no `GEMINI_API_KEY` is available in
 the environment (checked explicitly in `app/chat.py`, not inferred from an
 SDK error shape). `sources` is the same `EvidenceSource` shape
 `/retrieve-evidence` returns, filtered to entries with `relevance >= 0.3`.
+
+## POST /general-drug-info
+Input:
+```json
+{ "drug_a": "string", "drug_b": "string" }
+```
+Output:
+```json
+{
+  "answer": "string",
+  "reference_sites": [{ "name": "string", "url": "string" }]
+}
+```
+Backs the Drug Interaction Checker's fallback (`/patient/interactions`)
+for the case where **neither** the Neo4j graph **nor** the GNN has
+anything on the pair (`predict-interaction` returns `evidence: null` and
+`interaction_predicted: false`) — previously a dead end. Calls Gemini
+(`gemini-flash-latest`) with **no retrieval and no grounding**, explicitly
+prompted to answer from its own general knowledge and to not claim the
+answer is verified. `reference_sites` is a **fixed, hardcoded list** of
+real, stable, reputable general drug-reference sites (Drugs.com,
+MedlinePlus, FDA DailyMed) — NOT per-answer citations of where the text
+came from.
+
+This is a deliberately different honesty contract from every other
+evidence-bearing endpoint in this file: `answer` is explicitly unverified
+general knowledge, and the UI must always label it as such, distinctly
+from the graph-verified result above it. Two things were tried and ruled
+out before landing here:
+- **Google Search grounding** (which would let us cite the literal page
+  an answer came from) was tested directly against this project's
+  Gemini key and returned `429 RESOURCE_EXHAUSTED` on the very first
+  call, while plain generation on the same key succeeded immediately
+  after — grounding is not reliably available on the free tier, so it
+  isn't used here.
+- Per-answer citations without grounding were rejected — an ungrounded
+  model naming a *specific* source for a *specific* claim would be
+  fabricating attribution, which is exactly what this file's
+  non-negotiable rule below exists to prevent.
+
+Returns `503` with an honest "not configured" message when no
+`GEMINI_API_KEY` is available, same as `/chat`.
 
 ## GET /graph
 Output:

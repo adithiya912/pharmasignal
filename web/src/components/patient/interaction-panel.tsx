@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, FlaskConical } from "lucide-react";
+import { ExternalLink, FlaskConical, Sparkles } from "lucide-react";
 import { GlassCard } from "@/components/glass-card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { SEED_DRUGS } from "@/lib/seed-drugs";
-import type { EvidenceResponse, PredictInteractionResponse } from "@/lib/types";
+import type { EvidenceResponse, GeneralInfoResponse, PredictInteractionResponse } from "@/lib/types";
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(path, {
@@ -45,6 +45,12 @@ function interactionLabel(interaction: PredictInteractionResponse): string {
   return "no known interaction";
 }
 
+/** True when neither the Neo4j graph nor the GNN has anything to say
+ * about this pair — the case where the checker used to be a dead end. */
+function hasNoGraphData(interaction: PredictInteractionResponse): boolean {
+  return !interaction.evidence && !interaction.interaction_predicted;
+}
+
 /** Mirrors ml-services/app/risk_score.py's honest-language conventions
  * (evidence tier is the primary signal, GNN confidence is a caveated
  * fallback only for pairs with no direct graph edge) as UI copy, without
@@ -78,10 +84,22 @@ interface CheckState {
   error?: string;
 }
 
+interface GeneralInfoState {
+  // "idle" doubles as "in flight" — handleCheck resets to idle before
+  // starting a new check, and the effect below never sets a separate
+  // "loading" state itself (setState synchronously inside an effect body
+  // is a react-hooks/set-state-in-effect lint error); the render below
+  // treats idle-while-no-graph-data as the loading state instead.
+  status: "idle" | "done" | "error";
+  data?: GeneralInfoResponse;
+  error?: string;
+}
+
 export function InteractionPanel() {
   const [drugA, setDrugA] = useState(SEED_DRUGS[0]);
   const [drugB, setDrugB] = useState(SEED_DRUGS[1]);
   const [state, setState] = useState<CheckState>({ status: "idle" });
+  const [generalInfo, setGeneralInfo] = useState<GeneralInfoState>({ status: "idle" });
 
   async function handleCheck(e: FormEvent) {
     e.preventDefault();
@@ -90,6 +108,7 @@ export function InteractionPanel() {
       return;
     }
     setState({ status: "loading" });
+    setGeneralInfo({ status: "idle" });
     try {
       const interaction = await postJson<PredictInteractionResponse>("/api/predict-interaction", {
         drug_a: drugA,
@@ -103,6 +122,29 @@ export function InteractionPanel() {
       setState({ status: "error", error: err instanceof Error ? err.message : "Something went wrong." });
     }
   }
+
+  // Our own verified graph/model has nothing on this pair — rather than
+  // leaving that as a dead end, ask the AI Health Assistant's Gemini
+  // backend for a general (clearly unverified) answer instead.
+  useEffect(() => {
+    if (state.status !== "done" || !state.interaction || !hasNoGraphData(state.interaction)) return;
+    let cancelled = false;
+    postJson<GeneralInfoResponse>("/api/general-drug-info", { drug_a: state.drugA, drug_b: state.drugB })
+      .then((data) => {
+        if (!cancelled) setGeneralInfo({ status: "done", data });
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setGeneralInfo({
+            status: "error",
+            error: err instanceof Error ? err.message : "Could not load a general answer.",
+          });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [state.status, state.interaction, state.drugA, state.drugB]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -189,6 +231,54 @@ export function InteractionPanel() {
                   ))}
                 </ul>
               </div>
+            )}
+          </GlassCard>
+        </motion.div>
+      )}
+
+      {state.status === "done" && state.interaction && hasNoGraphData(state.interaction) && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.1 }}>
+          <GlassCard className="flex flex-col gap-4 border-primary/20 p-6">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Sparkles className="size-4 text-primary" />
+              General AI overview
+            </div>
+            <p className="text-xs text-muted-foreground">
+              PharmaSignal&apos;s own verified graph has no data on this pair, so this is a general answer from
+              Gemini&apos;s own knowledge — <span className="font-medium text-foreground">not</span> verified against
+              our data, and not a substitute for the sources below.
+            </p>
+
+            {generalInfo.status === "idle" && (
+              <p className="text-sm text-muted-foreground">Asking the AI assistant…</p>
+            )}
+            {generalInfo.status === "error" && <p className="text-sm text-risk-medium">{generalInfo.error}</p>}
+            {generalInfo.status === "done" && generalInfo.data && (
+              <>
+                <p className="text-[0.95rem] leading-relaxed text-foreground whitespace-pre-line">
+                  {generalInfo.data.answer}
+                </p>
+                <div>
+                  <h3 className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                    Verify this yourself
+                  </h3>
+                  <ul className="flex flex-col gap-1.5">
+                    {generalInfo.data.reference_sites.map((site) => (
+                      <li key={site.url}>
+                        <a
+                          href={site.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1.5 text-sm text-foreground underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-foreground"
+                        >
+                          <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
+                          {site.name}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </>
             )}
           </GlassCard>
         </motion.div>
