@@ -10,7 +10,11 @@ services:
     runtime: docker
     plan: free
     region: oregon
-    rootDir: ml-services
+    # dockerfilePath/dockerContext are relative to the repo root. Not
+    # setting rootDir deliberately — with it set, Render resolves those
+    # two paths relative to rootDir instead, which doubled the segment
+    # (ml-services/ml-services/Dockerfile) and broke the build. Confirmed
+    # directly from the actual failed-build log, not guessed.
     dockerfilePath: ./ml-services/Dockerfile
     dockerContext: ./ml-services
     healthCheckPath: /health
